@@ -2,3 +2,13 @@ node_modules
 Plan.md
 .env
 EXECUTION_PLAN.md
+
+# TypeScript compiled output (source is .ts — never commit generated .js/.d.ts alongside .ts files)
+apps/server/src/**/*.js
+apps/server/src/**/*.d.ts
+
+# Auto-generated AI tool skill syncs (regenerated on install)
+**/.claude/
+**/.cursor/
+**/.agents/
+**/.devin/
