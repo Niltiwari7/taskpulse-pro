@@ -1,8 +1,8 @@
-export interface Project {
+export interface Workspace {
   id: string;
   name: string;
   description: string;
-  ownerId: string;
+  visibility: "PUBLIC" | "PRIVATE";
   createdAt: string;
   updatedAt: string;
 }

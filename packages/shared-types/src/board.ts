@@ -1,7 +1,7 @@
 export interface Board {
   id: string;
   name: string;
-  projectId: string;
+  workspaceId: string;
   createdAt: string;
   updatedAt: string;
 }
