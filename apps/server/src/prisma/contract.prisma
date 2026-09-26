@@ -1,0 +1,45 @@
+// use prisma-8
+
+enum WorkspaceRole {
+  ADMIN
+  MEMBER
+}
+
+enum WorkspaceVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+model User {
+  id        String   @id @default(nanoid())
+  username  String   @unique
+  email     String   @unique
+  fullName  String?
+  avatarUrl String?
+  createdAt TimestamptzString @default(now())
+
+  workspaceMemberships WorkspaceMember[]
+}
+
+model Workspace {
+  id          String              @id @default(nanoid())
+  name        String
+  description String?
+  visibility  WorkspaceVisibility
+  createdAt   TimestamptzString   @default(now())
+
+  members WorkspaceMember[]
+}
+
+model WorkspaceMember {
+  id          String            @id @default(nanoid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole     @default(MEMBER)
+  joinedAt    TimestamptzString @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@unique([workspaceId, userId])
+}

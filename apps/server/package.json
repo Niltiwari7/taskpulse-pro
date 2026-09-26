@@ -1,5 +1,6 @@
 {
   "name": "server",
+  "type": "module",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -8,7 +9,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "postinstall": "prisma skills sync || exit 0",
-     "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "contract:emit": "prisma contract emit"
   },
   "keywords": [],
   "author": "",
@@ -16,7 +18,9 @@
   "packageManager": "pnpm@10.16.1",
   "dependencies": {
     "@prisma/client": "^7.10.0",
+    "@prisma/orm-postgres": "8.0.0-rc.12",
     "cors": "^2.8.6",
+    "dotenv": "^18.0.4",
     "express": "^5.2.1",
     "zod": "^4.6.5"
   },

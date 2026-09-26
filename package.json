@@ -2,6 +2,7 @@
   "name": "taskpulse-pro",
   "version": "1.0.0",
   "description": "",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -18,6 +19,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "eslint": "^10.11.0",
+    "globals": "^17.12.0",
     "prettier": "^3.9.9",
     "typescript-eslint": "^8.70.1"
   }
