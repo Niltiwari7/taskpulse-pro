@@ -125,7 +125,7 @@ model List {
   boardId    String
   name       String
   position   Float
-  isArchived Boolean  @default(false)
+  isArchived boolean()
   createdAt  TimestamptzString @default(now())
 
   board Board @relation(fields: [boardId], references: [id])
@@ -139,11 +139,11 @@ model Card {
   description     String?
   position        Float
   coverImageUrl   String?
-  startDate       DateTime?
-  dueDate         DateTime?
-  dueDateReminder DateTime?
-  isDueComplete   Boolean  @default(false)
-  isArchived      Boolean  @default(false)
+  startDate       TimestamptzString?
+  dueDate         TimestamptzString?
+  dueDateReminder TimestamptzString?
+  isDueComplete   boolean()
+  isArchived      boolean()
   createdAt       TimestamptzString @default(now())
 
   list              List               @relation(fields: [listId], references: [id])
@@ -195,7 +195,7 @@ model Comment {
   userId    String
   content   String
   createdAt TimestamptzString @default(now())
-  updatedAt TimestamptzString @updatedAt
+  updatedAt temporal.updatedAtString()
 
   card     Card             @relation(fields: [cardId], references: [id])
   user     User             @relation(fields: [userId], references: [id])
@@ -225,9 +225,9 @@ model ChecklistItem {
   id             String   @id @default(nanoid())
   checklistId    String
   content        String
-  isCompleted    Boolean  @default(false)
+  isCompleted    boolean()
   assignedUserId String?
-  dueDate        DateTime?
+  dueDate        TimestamptzString?
   position       Float
 
   checklist    Checklist @relation(fields: [checklistId], references: [id])
