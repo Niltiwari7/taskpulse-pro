@@ -6,6 +6,8 @@ EXECUTION_PLAN.md
 # TypeScript compiled output (source is .ts — never commit generated .js/.d.ts alongside .ts files)
 apps/server/src/**/*.js
 apps/server/src/**/*.d.ts
+# Exception: Prisma-generated contract declaration (no .ts source, must be committed like contract.json)
+!apps/server/src/prisma/contract.d.ts
 
 # Auto-generated AI tool skill syncs (regenerated on install)
 **/.claude/
