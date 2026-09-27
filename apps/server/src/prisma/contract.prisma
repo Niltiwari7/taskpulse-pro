@@ -10,6 +10,26 @@ enum WorkspaceVisibility {
   PRIVATE
 }
 
+enum BoardVisibility {
+  PRIVATE
+  WORKSPACE
+  PUBLIC
+}
+
+enum BoardMemberRole {
+  ADMIN
+  NORMAL
+  OBSERVER
+}
+
+enum CustomFieldType {
+  TEXT
+  NUMBER
+  DATE
+  DROPDOWN
+  CHECKBOX
+}
+
 model User {
   id        String   @id @default(nanoid())
   username  String   @unique
@@ -18,7 +38,32 @@ model User {
   avatarUrl String?
   createdAt TimestamptzString @default(now())
 
+  // Workspace
   workspaceMemberships WorkspaceMember[]
+
+  // Board
+  boardMemberships BoardMember[]
+
+  // Card
+  cardMemberships CardMember[]
+
+  // Comments
+  comments Comment[]
+
+  // Comment mentions
+  commentMentions CommentMention[]
+
+  // Checklist items assigned to user
+  assignedChecklistItems ChecklistItem[]
+
+  // Attachments
+  attachments Attachment[]
+
+  // Votes
+  cardVotes CardVote[]
+
+  // Activities
+  activities Activity[]
 }
 
 model Workspace {
@@ -29,17 +74,220 @@ model Workspace {
   createdAt   TimestamptzString   @default(now())
 
   members WorkspaceMember[]
+  boards  Board[]
 }
 
 model WorkspaceMember {
-  id          String            @id @default(nanoid())
+  id          String        @id @default(nanoid())
   workspaceId String
   userId      String
-  role        WorkspaceRole     @default(MEMBER)
+  role        WorkspaceRole @default(MEMBER)
   joinedAt    TimestamptzString @default(now())
 
   workspace Workspace @relation(fields: [workspaceId], references: [id])
   user      User      @relation(fields: [userId], references: [id])
 
   @@unique([workspaceId, userId])
+}
+
+model Board {
+  id                   String         @id @default(nanoid())
+  workspaceId          String
+  name                 String
+  visibility           BoardVisibility
+  backgroundColorOrUrl String?
+  createdAt            TimestamptzString @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  members      BoardMember[]
+  lists        List[]
+  labels       Label[]
+  customFields CustomField[]
+  activities   Activity[]
+}
+
+model BoardMember {
+  id       String          @id @default(nanoid())
+  boardId  String
+  userId   String
+  role     BoardMemberRole
+  joinedAt TimestamptzString @default(now())
+
+  board Board @relation(fields: [boardId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@unique([boardId, userId])
+}
+
+model List {
+  id         String   @id @default(nanoid())
+  boardId    String
+  name       String
+  position   Float
+  isArchived Boolean  @default(false)
+  createdAt  TimestamptzString @default(now())
+
+  board Board @relation(fields: [boardId], references: [id])
+  cards Card[]
+}
+
+model Card {
+  id              String   @id @default(nanoid())
+  listId          String
+  title           String
+  description     String?
+  position        Float
+  coverImageUrl   String?
+  startDate       DateTime?
+  dueDate         DateTime?
+  dueDateReminder DateTime?
+  isDueComplete   Boolean  @default(false)
+  isArchived      Boolean  @default(false)
+  createdAt       TimestamptzString @default(now())
+
+  list              List               @relation(fields: [listId], references: [id])
+  members           CardMember[]
+  labels            CardLabel[]
+  comments          Comment[]
+  checklists        Checklist[]
+  attachments       Attachment[]
+  customFieldValues CustomFieldValue[]
+  votes             CardVote[]
+  activities        Activity[]
+}
+
+model CardMember {
+  id     String @id @default(nanoid())
+  cardId String
+  userId String
+
+  card Card @relation(fields: [cardId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([cardId, userId])
+}
+
+model Label {
+  id     String @id @default(nanoid())
+  boardId String
+  name   String?
+  color  String?
+
+  board Board       @relation(fields: [boardId], references: [id])
+  cards CardLabel[]
+}
+
+model CardLabel {
+  id      String @id @default(nanoid())
+  cardId  String
+  labelId String
+
+  card  Card  @relation(fields: [cardId], references: [id])
+  label Label @relation(fields: [labelId], references: [id])
+
+  @@unique([cardId, labelId])
+}
+
+model Comment {
+  id        String   @id @default(nanoid())
+  cardId    String
+  userId    String
+  content   String
+  createdAt TimestamptzString @default(now())
+  updatedAt TimestamptzString @updatedAt
+
+  card     Card             @relation(fields: [cardId], references: [id])
+  user     User             @relation(fields: [userId], references: [id])
+  mentions CommentMention[]
+}
+
+model CommentMention {
+  id              String @id @default(nanoid())
+  commentId       String
+  mentionedUserId String
+
+  comment       Comment @relation(fields: [commentId], references: [id])
+  mentionedUser User    @relation(fields: [mentionedUserId], references: [id])
+}
+
+model Checklist {
+  id       String   @id @default(nanoid())
+  cardId   String
+  title    String
+  position Float
+
+  card  Card            @relation(fields: [cardId], references: [id])
+  items ChecklistItem[]
+}
+
+model ChecklistItem {
+  id             String   @id @default(nanoid())
+  checklistId    String
+  content        String
+  isCompleted    Boolean  @default(false)
+  assignedUserId String?
+  dueDate        DateTime?
+  position       Float
+
+  checklist    Checklist @relation(fields: [checklistId], references: [id])
+  assignedUser User?     @relation(fields: [assignedUserId], references: [id])
+}
+
+model Attachment {
+  id         String   @id @default(nanoid())
+  cardId     String
+  userId     String
+  fileUrl    String
+  fileName   String
+  fileType   String?
+  uploadedAt TimestamptzString @default(now())
+
+  card Card @relation(fields: [cardId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+}
+
+model CustomField {
+  id      String          @id @default(nanoid())
+  boardId String
+  name    String
+  type    CustomFieldType
+
+  board  Board              @relation(fields: [boardId], references: [id])
+  values CustomFieldValue[]
+}
+
+model CustomFieldValue {
+  id            String  @id @default(nanoid())
+  customFieldId String
+  cardId        String
+  value         String?
+
+  customField CustomField @relation(fields: [customFieldId], references: [id])
+  card        Card        @relation(fields: [cardId], references: [id])
+}
+
+model CardVote {
+  id     String @id @default(nanoid())
+  cardId String
+  userId String
+
+  card Card @relation(fields: [cardId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([cardId, userId])
+}
+
+model Activity {
+  id         String   @id @default(nanoid())
+  boardId    String
+  cardId     String?
+  userId     String
+  actionType String
+  details    String?
+  createdAt  TimestamptzString @default(now())
+
+  board Board @relation(fields: [boardId], references: [id])
+  card  Card? @relation(fields: [cardId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
 }
