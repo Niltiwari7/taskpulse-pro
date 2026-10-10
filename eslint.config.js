@@ -12,5 +12,9 @@ export default tseslint.config(
         ...globals.node,
       },
     },
+    rules: {
+      // Allow `const { id, ...rest } = obj` to omit a key.
+      '@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true }],
+    },
   }
 )

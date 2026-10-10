@@ -68,6 +68,10 @@
       "model": "List",
       "namespace": "public"
     },
+    "Session": {
+      "model": "Session",
+      "namespace": "public"
+    },
     "User": {
       "model": "User",
       "namespace": "public"
@@ -1924,6 +1928,84 @@
               "table": "List"
             }
           },
+          "Session": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "expiresAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "tokenHash": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "userId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "user": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "userId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "expiresAt": {
+                  "column": "expiresAt"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "tokenHash": {
+                  "column": "tokenHash"
+                },
+                "userId": {
+                  "column": "userId"
+                }
+              },
+              "namespaceId": "public",
+              "table": "Session"
+            }
+          },
           "User": {
             "fields": {
               "avatarUrl": {
@@ -1955,6 +2037,13 @@
                 }
               },
               "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "passwordHash": {
                 "nullable": false,
                 "type": {
                   "codecId": "pg/text@1",
@@ -2090,6 +2179,21 @@
                   "namespace": "public"
                 }
               },
+              "sessions": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "userId"
+                  ]
+                },
+                "to": {
+                  "model": "Session",
+                  "namespace": "public"
+                }
+              },
               "workspaceMemberships": {
                 "cardinality": "1:N",
                 "on": {
@@ -2122,6 +2226,9 @@
                 },
                 "id": {
                   "column": "id"
+                },
+                "passwordHash": {
+                  "column": "passwordHash"
                 },
                 "username": {
                   "column": "username"
@@ -3725,6 +3832,88 @@
               },
               "uniques": []
             },
+            "Session": {
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "expiresAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "tokenHash": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "userId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "userId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "Session"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "User"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "expiresAt"
+                  ],
+                  "name": "Session_expiresAt_idx_6b6b8c10",
+                  "prefix": "Session_expiresAt_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "userId"
+                  ],
+                  "name": "Session_userId_idx_a489d58a",
+                  "prefix": "Session_userId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "tokenHash"
+                  ]
+                }
+              ]
+            },
             "User": {
               "columns": {
                 "avatarUrl": {
@@ -3752,6 +3941,11 @@
                   "nullable": true
                 },
                 "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "passwordHash": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
                   "nullable": false
@@ -3999,10 +4193,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "45a12f64929c908c8fb0104192d371699b8d86e1d9feb960031d7cc149b49bd9"
+    "storageHash": "6f9058512882853b4a7643e4ae9a3080acb0becb25e4da0b2615b963a92d9093"
   },
   "execution": {
-    "executionHash": "c57d3d2b327346f2824cd190333ee83c77f1049c8e5271822972e5ab2e7f4de3",
+    "executionHash": "d4ef3a3b187c83f27c1a35c56c0647529fbcdecbc84394b8dae05091890bac1a",
     "mutations": {
       "defaults": [
         {
@@ -4194,6 +4388,17 @@
             "column": "id",
             "namespace": "public",
             "table": "List"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "nanoid",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "Session"
           }
         },
         {

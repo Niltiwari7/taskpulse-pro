@@ -1,12 +1,18 @@
+import argon2 from 'argon2';
 import { db } from '../prisma/db';
 
+// Every seeded user can log in with this password (local dev only).
+const SEED_PASSWORD = 'password123';
+
 async function seedUsers() {
+  const passwordHash = await argon2.hash(SEED_PASSWORD);
   const users = [
     {
       id: 'seed-user-alice',
       fullName: 'Alice Smith',
       username: 'alice',
       email: 'alice@example.com',
+      passwordHash,
       avatarUrl: 'https://camo.githubusercontent.com/9105e4cd984bdf30d9027d64564d5541774e471fdfb84db12ef7a707b533dd61/68747470733a2f2f63646e2e6a7364656c6976722e6e65742f67682f616c6f68652f617661746172732f706e672f6d656d6f5f31372e706e67',
     },
     {
@@ -14,6 +20,7 @@ async function seedUsers() {
       fullName: 'Bob Johnson',
       username: 'bob',
       email: 'bob@example.com',
+      passwordHash,
       avatarUrl: 'https://camo.githubusercontent.com/8c34ba76c493e7fe32fe58497e631543daec451ab10bb704c3b59df9910df10a/68747470733a2f2f63646e2e6a7364656c6976722e6e65742f67682f616c6f68652f617661746172732f706e672f6d656d6f5f33342e706e67',
     },
   ];

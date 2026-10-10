@@ -36,6 +36,8 @@ model User {
   email     String   @unique
   fullName  String?
   avatarUrl String?
+  passwordHash String
+  sessions Session[]
   createdAt TimestamptzString @default(now())
 
   // Workspace
@@ -290,4 +292,21 @@ model Activity {
   board Board @relation(fields: [boardId], references: [id])
   card  Card? @relation(fields: [cardId], references: [id])
   user  User  @relation(fields: [userId], references: [id])
+}
+
+model Session {
+  id String @id @default(nanoid())
+  tokenHash String @unique
+  userId String
+  expiresAt TimestamptzString
+  createdAt TimestamptzString @default(now())
+
+  user User @relation(
+    fields: [userId],
+    references:[id],
+    onDelete: Cascade
+  )
+
+  @@index([userId])
+  @@index([expiresAt])
 }
