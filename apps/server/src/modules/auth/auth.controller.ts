@@ -1,4 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
+import { db } from "../../prisma/db";
+import {hashToken} from "../../middleware/hashToken";
 
 import {
   loginSchema,
@@ -105,5 +107,46 @@ export async function login(
     }
 
     next(error);
+  }
+}
+
+export function getMe(req: Request, res: Response): void {
+  if (!req.user) {
+    res.status(401).json({
+      error: {
+        code: "UNAUTHENTICATED",
+        message: "Authentication required.",
+      },
+    });
+    return;
+  }
+
+  res.status(200).json({
+    data: {
+      user: toPublicUser(req.user),
+    },
+  });
+}
+
+export async function logout(req: Request, res: Response): Promise<void> {
+  try {
+    const token = req.cookies?.["taskpulse_session"] as string | undefined;
+
+    if(typeof token === 'string' && token.length > 0){
+      await db.orm.public.Session.where({ tokenHash: hashToken(token) }).delete();
+    }
+    res.clearCookie("taskpulse_session", cookieOptions);
+    res.status(200).json({
+      data: {
+        message: "Logged out successfully.",
+      },
+    });
+  }catch (error) {
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to log out.",
+      },
+    });
   }
 }
