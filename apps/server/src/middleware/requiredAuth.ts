@@ -1,5 +1,4 @@
 import type { Request, Response, NextFunction } from 'express';
-import { createHash } from 'crypto';
 import { db} from '../prisma/db';
 import { hashToken } from './hashToken';
 

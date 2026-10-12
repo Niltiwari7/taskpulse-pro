@@ -12,10 +12,12 @@ RUN apt-get update \
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 COPY apps/server/package.json apps/server/package.json
+COPY packages/shared-types/package.json packages/shared-types/package.json
 COPY apps/client/package.json apps/client/package.json
 
 RUN npm_config_build_from_source=true pnpm install --frozen-lockfile
 
+COPY packages packages
 COPY apps/server apps/server
 
 WORKDIR /app/apps/server

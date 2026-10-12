@@ -142,6 +142,7 @@ export async function logout(req: Request, res: Response): Promise<void> {
       },
     });
   }catch (error) {
+    console.error(`Failed to log out: ${error}`);
     res.status(500).json({
       error: {
         code: "INTERNAL_SERVER_ERROR",

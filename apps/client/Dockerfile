@@ -8,9 +8,11 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 COPY apps/client/package.json apps/client/package.json
 COPY apps/server/package.json apps/server/package.json
+COPY packages/shared-types/package.json packages/shared-types/package.json
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --filter client...
 
+COPY packages packages
 COPY apps/client apps/client
 
 WORKDIR /app/apps/client

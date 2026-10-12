@@ -4,7 +4,13 @@ import cookieParser from 'cookie-parser';
 import authRouter from './modules/auth/auth.routes'
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    // Cookies need an explicit origin + credentials; the default '*' is rejected by browsers
+    origin: process.env.CLIENT_ORIGIN ?? 'http://localhost:5173',
+    credentials: true,
+  }),
+);
 app.use(cookieParser());
 
 
