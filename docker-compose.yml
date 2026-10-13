@@ -26,6 +26,12 @@ services:
       PORT: 4000
       CLIENT_ORIGIN: http://localhost:5173
       SESSION_SECRET: ${SESSION_SECRET}
+    # Mount source so `tsx watch` sees edits; the anonymous volume keeps the
+    # container's node_modules (argon2 is compiled for this image, not the host).
+    volumes:
+      - ./apps/server:/app/apps/server
+      - ./packages:/app/packages
+      - /app/apps/server/node_modules
     depends_on:
       postgres:
         condition: service_healthy
@@ -36,6 +42,12 @@ services:
       dockerfile: apps/client/Dockerfile
     ports:
       - "5173:5173"
+    # Mount source so Vite HMR sees edits; the anonymous volume keeps the
+    # container's node_modules instead of the host's.
+    volumes:
+      - ./apps/client:/app/apps/client
+      - ./packages:/app/packages
+      - /app/apps/client/node_modules
     depends_on:
       - api
 

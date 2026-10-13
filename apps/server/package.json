@@ -20,6 +20,7 @@
   "dependencies": {
     "@prisma/client": "^7.10.0",
     "@prisma/orm-postgres": "8.0.0-rc.12",
+    "@taskpulse/shared-types": "workspace:*",
     "argon2": "^0.45.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",

@@ -2,7 +2,7 @@ import argon2 from 'argon2';
 import { createHash, randomBytes } from 'crypto';
 import { db } from '../../prisma/db';
 
-import type { RegisterInput, LoginInput } from './auth.schema';
+import type { RegisterInput, LoginInput } from '@taskpulse/shared-types';
 
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 

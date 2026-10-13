@@ -8,6 +8,8 @@ apps/server/src/**/*.js
 apps/server/src/**/*.d.ts
 # Exception: Prisma-generated contract declaration (no .ts source, must be committed like contract.json)
 !apps/server/src/prisma/contract.d.ts
+# Exception: hand-written ambient declarations (e.g. Express Request augmentation)
+!apps/server/src/types/**/*.d.ts
 
 # Auto-generated AI tool skill syncs (regenerated on install)
 **/.claude/

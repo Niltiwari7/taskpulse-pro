@@ -17,6 +17,7 @@ COPY apps/client/package.json apps/client/package.json
 
 RUN npm_config_build_from_source=true pnpm install --frozen-lockfile
 
+COPY tsconfig.base.json ./
 COPY packages packages
 COPY apps/server apps/server
 

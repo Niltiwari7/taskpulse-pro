@@ -5,7 +5,7 @@ import {hashToken} from "../../middleware/hashToken";
 import {
   loginSchema,
   registerSchema,
-} from "./auth.schema";
+} from "@taskpulse/shared-types";
 
 import {
   AuthError,

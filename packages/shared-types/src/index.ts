@@ -17,3 +17,4 @@ export * from "./customFieldValue"
 export * from "./activity"
 export * from "./activity"
 export * from './api'
+export * from './auth.schema'

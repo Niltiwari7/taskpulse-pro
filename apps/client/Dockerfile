@@ -12,6 +12,7 @@ COPY packages/shared-types/package.json packages/shared-types/package.json
 
 RUN pnpm install --frozen-lockfile --filter client...
 
+COPY tsconfig.base.json ./
 COPY packages packages
 COPY apps/client apps/client
 

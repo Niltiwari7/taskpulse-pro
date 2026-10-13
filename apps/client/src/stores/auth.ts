@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
-import type { PublicUser } from "@taskpulse/shared-types";
+import type { LoginInput, PublicUser, RegisterInput } from "@taskpulse/shared-types";
 
 import { ApiError, http } from "@/services/http";
 
@@ -8,15 +8,6 @@ interface UserResponse {
   data: {
     user: PublicUser;
   };
-}
-
-export interface Credentials {
-  email: string;
-  password: string;
-}
-
-export interface RegisterInput extends Credentials {
-  username: string;
 }
 
 export const useAuthStore = defineStore("auth", () => {
@@ -39,7 +30,7 @@ export const useAuthStore = defineStore("auth", () => {
     }
   }
 
-  async function login(input: Credentials): Promise<PublicUser> {
+  async function login(input: LoginInput): Promise<PublicUser> {
     loading.value = true;
     try {
       const response = await http<UserResponse>("/auth/login", {
