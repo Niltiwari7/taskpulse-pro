@@ -43,7 +43,6 @@ export async function register(
     }
 
     const user = await registerUser(parsed.data);
-
     res.status(201).json({
       data: {
         user: toPublicUser(user),

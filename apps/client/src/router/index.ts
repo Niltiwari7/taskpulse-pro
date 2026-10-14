@@ -35,6 +35,7 @@
  */
 
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 // ─── Route definitions ────────────────────────────────────────────────────────
 
@@ -53,13 +54,13 @@ const router = createRouter({
         {
           path: 'login',
           name: 'login',                                     // name lets you do router.push({ name: 'login' })
-          component: () => import('@/pages/auth/LoginPage.vue'),
+          component: () => import('@/pages/auth/LoginView.vue'),
           meta: { requiresAuth: false },
         },
         {
           path: 'register',
           name: 'register',
-          component: () => import('@/pages/auth/RegisterPage.vue'),
+          component: () => import('@/pages/auth/RegisterView.vue'),
           meta: { requiresAuth: false },
         },
       ],
@@ -74,7 +75,7 @@ const router = createRouter({
         {
           path: 'dashboard',
           name: 'dashboard',
-          component: () => import('@/pages/dashboard/DashboardPage.vue'),
+          component: () => import('@/pages/dashboard/DashboardView.vue'),
         },
         // Future routes added here (W05 boards, W07 cards, etc.):
         // { path: 'boards/:boardId', name: 'board', component: () => import(...) },
@@ -94,18 +95,30 @@ const router = createRouter({
 /**
  * This runs before every route change.
  *
- * Right now it checks a simple localStorage flag so you can test the guard
- * immediately without a real auth backend. In W03-D4 you'll replace
- * `isLoggedIn` with a check against the Pinia auth store.
+ * It reads auth state from the Pinia store. On the first navigation it calls
+ * /auth/me so an existing session cookie survives a page refresh.
  *
  * Pattern:
  *   - Route needs auth + user not logged in  → send to /login
  *   - Route is guest-only + user IS logged in → send to /dashboard
  *   - Everything else                         → allow
  */
-router.beforeEach((to) => {
-  // TODO (W03-D4): replace with → const { user } = useAuthStore()
-  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
+// Restore the session from the cookie once per page load (e.g. after a refresh)
+let sessionChecked = false
+
+router.beforeEach(async (to) => {
+  const authStore = useAuthStore()
+
+  if (!sessionChecked) {
+    sessionChecked = true
+    try {
+      await authStore.fetchMe()
+    } catch {
+      // Network/server error — treat as logged out rather than blocking navigation
+    }
+  }
+
+  const isLoggedIn = authStore.isAuthenticated
 
   const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
   const isGuestRoute  = to.matched.some((record) => record.meta.requiresAuth === false)

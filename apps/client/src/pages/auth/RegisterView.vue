@@ -3,12 +3,10 @@ import {ref} from "vue";
 import {useRouter} from "vue-router";
 import {useForm} from "vee-validate";
 import {toTypedSchema} from "@/lib/zod-typed-schema"
-
 import {Button} from '@/components/ui/button'
-import {Input} from '@/components/ui/input'
-
-import {loginSchema, type LoginInput} from '@taskpulse/shared-types'
+import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/stores/auth";
+import { registerSchema, type RegisterInput } from "@taskpulse/shared-types";
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -19,35 +17,33 @@ const {
   errors,
   handleSubmit,
   isSubmitting,
-} = useForm<LoginInput>({
-  validationSchema: toTypedSchema(loginSchema),
-  initialValues: {email: "", password: ""},
-})
+} = useForm<RegisterInput>({
+  validationSchema: toTypedSchema(registerSchema),
+});
 
+const [username, usernameAttrs] = defineField("username")
 const [email, emailAttrs] = defineField("email")
 const [password, passwordAttrs] = defineField("password")
 
-
-const onSubmit = handleSubmit(async (values)=> {
+const onSubmit = handleSubmit(async (values) => {
   serverError.value = ""
 
   try {
-    await authStore.login(values)
-    await router.push("/")
-  }catch(error) {
-    serverError.value = error instanceof Error ? error.message: "Unable to sign in. Please try again."
+    await authStore.register(values)
+    await router.replace({ name: "dashboard" })
+  }
+  catch (error) {
+    serverError.value = error instanceof Error ? error.message: "Something went wrong, Please try again"
   }
 })
-
 </script>
-
 <template>
-  <main class="flex min-h-screen items-center justify-center bg-background px-4">
+   <main class="flex min-h-screen items-center justify-center bg-background px-3 py-8">
     <section class="w-80 max-w-md space-y-6">
       <header class="space-y-2 text-center">
-        <h1 class="text-3xl font-bold tracking-tight">Welcome back</h1>
+        <h1 class="text-3xl font-bold tracking-tight">Create an account</h1>
         <p class="text-sm text-muted-foreground">
-          Sign in to your TaskPulse account.
+          Get started with TaskPulse today.
         </p>
       </header>
 
@@ -57,6 +53,22 @@ const onSubmit = handleSubmit(async (values)=> {
           role="alert"
           class="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
           >{{ serverError }}</div>
+
+        <div class="space-y-2">
+          <label for="username" class="text-sm font-medium">Username</label>
+          <Input
+            id="username"
+            v-model="username"
+            v-bind="usernameAttrs"
+            type="text"
+            autocomplete="username"
+            placeholder="johndoe"
+            :aria-invalid="Boolean(errors.username)"
+            />
+            <p v-if="errors.username" class="text-sm text-destructive">
+            {{ errors.username }}
+          </p>
+        </div>
 
         <div class="space-y-2">
           <label for="email" class="text-sm font-medium">Email</label>
@@ -81,7 +93,7 @@ const onSubmit = handleSubmit(async (values)=> {
             v-model="password"
             v-bind="passwordAttrs"
             type="password"
-            autocomplete="current-password"
+            autocomplete="new-password"
             placeholder="••••••••"
             :aria-invalid="Boolean(errors.password)"
             />
@@ -90,14 +102,16 @@ const onSubmit = handleSubmit(async (values)=> {
           </p>
         </div>
 
-        <Button type="submit"
-                class="w-full"
-                :disabled="isSubmitting"
-                >{{ isSubmitting ? "Signing in..." : "Sign in" }}</Button>
-                </form>
-       <p class="text-center text-sm text-muted-foreground">
-        Don't have an account yet? <RouterLink to="/register" class="font-medium text-primary underline-offset-4 hover:underline">Sign up</RouterLink>
-       </p>
+        <Button type="submit" 
+                class="w-80"
+        :disabled="isSubmitting">
+          {{isSubmitting ? "Creating account..." : "Create account" }}
+        </Button>
+        </form>
+
+        <p class="text-center text-sm text-muted-foreground">
+          Already have an account? <RouterLink to="/login" class="font-medium text-primary underline-offset-4 hover:underline">Sign in</RouterLink>
+        </p>
     </section>
-  </main>
+   </main>
 </template>
