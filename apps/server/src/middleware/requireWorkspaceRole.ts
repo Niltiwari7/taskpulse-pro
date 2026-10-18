@@ -66,11 +66,12 @@ export function requireWorkspaceRole(requiredRole: WorkspaceRole) {
 
       const userRole = await getWorkspaceRoleFromDb(workspaceId, userId);
 
+      // 404, not 403: non-members must not learn that the workspace exists.
       if (!userRole) {
-        res.status(403).json({
+        res.status(404).json({
           error: {
-            code: 'FORBIDDEN',
-            message: 'You are not a member of this workspace.',
+            code: 'NOT_FOUND',
+            message: 'Workspace not found.',
           },
         });
         return;

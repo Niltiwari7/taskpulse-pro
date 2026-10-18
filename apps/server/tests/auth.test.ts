@@ -48,7 +48,7 @@ describe("Authentication integration tests", () => {
     // Sessions are removed by the Session.user onDelete: Cascade relation
     await db.orm.public.User
       .where((u) => u.email.in([...createdEmails]))
-      .delete();
+      .deleteAll();
     createdEmails.clear();
   })
 

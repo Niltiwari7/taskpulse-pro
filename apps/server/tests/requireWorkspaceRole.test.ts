@@ -68,15 +68,15 @@ describe('requireWorkspaceRole middleware', () => {
     if (createdWorkspaceIds.length > 0) {
       await db.orm.public.WorkspaceMember
         .where((m) => m.workspaceId.in(createdWorkspaceIds))
-        .delete();
+        .deleteAll();
       await db.orm.public.Workspace
         .where((w) => w.id.in(createdWorkspaceIds))
-        .delete();
+        .deleteAll();
     }
     if (createdUserIds.length > 0) {
       await db.orm.public.User
         .where((u) => u.id.in(createdUserIds))
-        .delete();
+        .deleteAll();
     }
     createdWorkspaceIds.length = 0;
     createdUserIds.length = 0;
@@ -97,7 +97,7 @@ describe('requireWorkspaceRole middleware', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns 403 when the user is not a member of the workspace', async () => {
+  it('returns 404 when the user is not a member of the workspace', async () => {
     const user = await createUser();
     const workspace = await createWorkspace();
     const app = buildTestApp({
@@ -107,7 +107,7 @@ describe('requireWorkspaceRole middleware', () => {
     });
 
     const res = await request(app).get(`/workspaces/${workspace.id}`);
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
   });
 
   it('returns 403 when a member tries an admin action', async () => {

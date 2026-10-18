@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import authRouter from './modules/auth/auth.routes'
+import workspaceRouter from './modules/workspace/workspace.routes'
 const app = express();
 
 app.use(
@@ -18,6 +19,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use('/api/v1/auth', authRouter);
+app.use('/api/v1/workspaces', workspaceRouter);
 
 
 app.get('/api/v1/health', (_req,res) => {
