@@ -9,10 +9,14 @@
  *   etc.
  *
  * Nothing else belongs here — no layout, no navigation. Those live in the
- * layout files (src/layouts/).
+ * layout files (src/layouts/). The one exception is <Toaster />: toasts must
+ * outlive page and layout changes, so it mounts once at the root.
  */
+import "vue-sonner/style.css"
+import { Toaster } from "@/components/ui/sonner"
 </script>
 
 <template>
   <RouterView />
+  <Toaster position="bottom-right" rich-colors />
 </template>
