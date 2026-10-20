@@ -1,6 +1,7 @@
 export * from './user'
 export * from './workspace'
 export * from './workSpaceMember'
+export * from './memberSchema'
 export * from './board'
 export * from './boardMember'
 export * from './list'

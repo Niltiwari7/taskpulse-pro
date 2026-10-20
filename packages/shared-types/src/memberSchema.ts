@@ -5,4 +5,6 @@ export const inviteMemberSchema = z.object({
   role: z.enum(['ADMIN', 'MEMBER']).default('MEMBER')
 })
 
-export const updateMemberRoleSchema = z.enum(['ADMIN', 'MEMBER']);
+export const updateMemberRoleSchema = z.object({
+  role: z.enum(['ADMIN', 'MEMBER']),
+});

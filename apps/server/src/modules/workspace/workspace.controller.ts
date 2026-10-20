@@ -9,6 +9,7 @@ import {
 import { isUniqueViolation } from '../../utils/isUniqueViolation';
 
 type WorkspaceParams = { workspaceId: string };
+type WorkspaceMemberParams = { workspaceId: string; userId: string };
 
 type WorkspaceRow = {
   id: string;
@@ -374,6 +375,10 @@ export async function updateWorkspaceMemberRole(
 
     const member = await db.orm.public.WorkspaceMember
       .where({ workspaceId, userId })
+      .select('userId', 'role', 'joinedAt')
+      .include('user', (user) =>
+        user.select('id', 'username', 'email', 'fullName', 'avatarUrl'),
+      )
       .first();
 
     if (!member) {
@@ -385,9 +390,9 @@ export async function updateWorkspaceMemberRole(
 
     // Admin can not demote their own role if he is the last admin
     if(role === 'MEMBER' && member.role === 'ADMIN' && member.userId === req.user!.id) {
-      const adminCount = await db.orm.public.WorkspaceMember
+      const { adminCount } = await db.orm.public.WorkspaceMember
         .where({ workspaceId, role: 'ADMIN' })
-        .count('id');
+        .aggregate((agg) => ({ adminCount: agg.count() }));
 
       if(adminCount === 1) {
         res.status(400).json({
@@ -440,9 +445,9 @@ export async function removeMemberFromWorkspace(
 
     // if you are the last admin, you can not remove yourself
     if (member.role === 'ADMIN' && member.userId === req.user!.id) {
-      const adminCount = await db.orm.public.WorkspaceMember
+      const { adminCount } = await db.orm.public.WorkspaceMember
         .where({ workspaceId, role: 'ADMIN' })
-        .count('id');
+        .aggregate((agg) => ({ adminCount: agg.count() }));
 
       if (adminCount === 1) {
         res.status(400).json({
