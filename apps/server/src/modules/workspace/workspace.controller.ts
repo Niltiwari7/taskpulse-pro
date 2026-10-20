@@ -3,7 +3,10 @@ import { db } from '../../prisma/db';
 import {
   createWorkspaceSchema,
   updateWorkspaceSchema,
+  inviteMemberSchema,
+  updateMemberRoleSchema
 } from '@taskpulse/shared-types';
+import { isUniqueViolation } from '../../utils/isUniqueViolation';
 
 type WorkspaceParams = { workspaceId: string };
 
@@ -22,6 +25,38 @@ function toWorkspaceResponse(workspace: WorkspaceRow) {
     description: workspace.description,
     visibility: workspace.visibility,
     createdAt: workspace.createdAt,
+  };
+}
+
+type WorkspaceMemberRow = {
+  userId: string;
+  role: 'ADMIN' | 'MEMBER';
+  joinedAt: string;
+  user: {
+    id: string;
+    username: string;
+    email: string;
+    fullName: string | null;
+    avatarUrl: string | null;
+  } | null;
+};
+
+function toWorkspaceMemberResponse(member: WorkspaceMemberRow) {
+  // The ORM types the joined user as nullable, but userId is a NOT NULL foreign key,
+  // so every membership row has a user.
+  const user = member.user!;
+
+  return {
+    userId: member.userId,
+    role: member.role,
+    joinedAt: member.joinedAt,
+    user: {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      fullName: user.fullName,
+      avatarUrl: user.avatarUrl,
+    },
   };
 }
 
@@ -199,6 +234,230 @@ export async function deleteWorkspace(
       await tx.orm.public.WorkspaceMember.where({ workspaceId }).deleteAll();
       await tx.orm.public.Workspace.where({ id: workspaceId }).delete();
     });
+
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * @route GET /workspaces/:workspaceId/members
+ * @description list the members of a workspace
+ * @access workspace MEMBER or ADMIN (requireWorkspaceRole)
+ */
+export async function listWorkspaceMembers(
+  req: Request<WorkspaceParams>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    // requireWorkspaceRole already rejected a missing workspaceId and non-members.
+    const { workspaceId } = req.params;
+
+    // Select only public user columns so passwordHash never leaves the database.
+    const members = await db.orm.public.WorkspaceMember
+      .where({ workspaceId })
+      .select('userId', 'role', 'joinedAt')
+      .include('user', (user) =>
+        user.select('id', 'username', 'email', 'fullName', 'avatarUrl'),
+      )
+      .orderBy([
+        (m) => m.role.asc(), // ADMIN before MEMBER
+        (m) => m.joinedAt.asc(),
+      ])
+      .all();
+
+    res.status(200).json({
+      data: { members: members.map(toWorkspaceMemberResponse) },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * @route POST /workspaces/:workspaceId/members
+ * @description add a member to a workspace
+ * @access workspace ADMIN (requireWorkspaceRole)
+ */
+export async function addMemberToWorkspace(
+  req: Request<WorkspaceParams>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const parsed = inviteMemberSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid member data.',
+          details: parsed.error.flatten(),
+        },
+      });
+      return;
+    }
+
+    const { email, role } = parsed.data;
+    const { workspaceId } = req.params;
+
+    const user = await db.orm.public.User
+      .where({ email })
+      .select('id', 'username', 'email', 'fullName', 'avatarUrl')
+      .first();
+
+    if (!user) {
+      res.status(404).json({
+        error: { code: 'USER_NOT_FOUND', message: 'No user with this email.' },
+      });
+      return;
+    }
+
+    try {
+      const member = await db.orm.public.WorkspaceMember.create({
+        workspaceId,
+        userId: user.id,
+        role,
+      });
+
+      res.status(201).json({
+        data: { member: toWorkspaceMemberResponse({ ...member, user }) },
+      });
+    } catch (error) {
+      // The unique (workspaceId, userId) index rejects an existing member,
+      // including two concurrent invites for the same user.
+      if (isUniqueViolation(error)) {
+        res.status(409).json({
+          error: {
+            code: 'ALREADY_MEMBER',
+            message: 'User is already a member of this workspace.',
+          },
+        });
+        return;
+      }
+      throw error;
+    }
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * @route PATCH /workspaces/:workspaceId/members/:userId
+ * @description update a workspace member role
+ * @access workspace ADMIN (requireWorkspaceRole)
+ */
+
+export async function updateWorkspaceMemberRole(
+  req: Request<WorkspaceMemberParams>,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const parsed = updateMemberRoleSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid member data.',
+          details: parsed.error.flatten(),
+        },
+      });
+      return;
+    }
+
+    const { role } = parsed.data;
+    const { workspaceId, userId } = req.params;
+
+    const member = await db.orm.public.WorkspaceMember
+      .where({ workspaceId, userId })
+      .first();
+
+    if (!member) {
+      res.status(404).json({
+        error: { code: 'MEMBER_NOT_FOUND', message: 'Member not found.' },
+      })
+      return
+    }
+
+    // Admin can not demote their own role if he is the last admin
+    if(role === 'MEMBER' && member.role === 'ADMIN' && member.userId === req.user!.id) {
+      const adminCount = await db.orm.public.WorkspaceMember
+        .where({ workspaceId, role: 'ADMIN' })
+        .count('id');
+
+      if(adminCount === 1) {
+        res.status(400).json({
+          error: {
+            code: 'LAST_ADMIN',
+            message: 'You can not demote the last admin.',
+          },
+        });
+        return;
+      }
+    }
+
+    await db.orm.public.WorkspaceMember
+      .where({ workspaceId, userId })
+      .update({ role });
+
+    res.status(200).json({
+      data: { member: toWorkspaceMemberResponse({ ...member, role }) },
+    });
+  } catch (error) {
+    next(error);
+
+  }
+}
+
+/**
+ * @route DELETE /workspaces/:workspaceId/members/:userId
+ * @description remove a member from a workspace
+ * @access workspace ADMIN (requireWorkspaceRole)
+ */
+
+export async function removeMemberFromWorkspace(
+  req: Request<WorkspaceMemberParams>,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const { workspaceId, userId } = req.params;
+
+    const member = await db.orm.public.WorkspaceMember
+      .where({ workspaceId, userId })
+      .first();
+
+    if (!member) {
+      res.status(404).json({
+        error: { code: 'MEMBER_NOT_FOUND', message: 'Member not found.' },
+      });
+      return;
+    }
+
+    // if you are the last admin, you can not remove yourself
+    if (member.role === 'ADMIN' && member.userId === req.user!.id) {
+      const adminCount = await db.orm.public.WorkspaceMember
+        .where({ workspaceId, role: 'ADMIN' })
+        .count('id');
+
+      if (adminCount === 1) {
+        res.status(400).json({
+          error: {
+            code: 'LAST_ADMIN',
+            message: 'You can not remove the last admin.',
+          },
+        });
+        return;
+      }
+    }
+
+    await db.orm.public.WorkspaceMember
+      .where({ workspaceId, userId })
+      .delete();
 
     res.status(204).end();
   } catch (error) {

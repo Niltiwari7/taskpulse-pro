@@ -1,6 +1,7 @@
 import argon2 from 'argon2';
 import { createHash, randomBytes } from 'crypto';
 import { db } from '../../prisma/db';
+import { isUniqueViolation } from '../../utils/isUniqueViolation';
 
 import type { RegisterInput, LoginInput } from '@taskpulse/shared-types';
 
@@ -18,17 +19,6 @@ export class AuthError extends Error {
 
 export function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
-}
-
-// Postgres SQLSTATE 23505 = unique violation. The driver error may be wrapped,
-// so walk the `cause` chain.
-function isUniqueViolation(error: unknown): boolean {
-  let current: unknown = error;
-  while (typeof current === 'object' && current !== null) {
-    if ('sqlState' in current && current.sqlState === '23505') return true;
-    current = 'cause' in current ? current.cause : undefined;
-  }
-  return false;
 }
 
 export async function registerUser(input: RegisterInput) {
