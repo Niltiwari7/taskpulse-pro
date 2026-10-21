@@ -3,7 +3,11 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import authRouter from './modules/auth/auth.routes'
 import workspaceRouter from './modules/workspace/workspace.routes'
+import path from 'node:path'
 const app = express();
+
+// Render terminates TLS at its proxy
+app.set('trust proxy', 1);
 
 app.use(
   cors({
@@ -25,5 +29,12 @@ app.use('/api/v1/workspaces', workspaceRouter);
 app.get('/api/v1/health', (_req,res) => {
   res.json({ status: 'ok' })
 })
+
+if(process.env.NODE_ENV === 'production') {
+  const clientDist = path.resolve(import.meta.dirname, '../../client/dist')
+  app.use(express.static(clientDist));
+  // SPA fallback: anything that is not /api goes to index.html
+   app.get(/^\/(?!api\/).*/, (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
+}
 
 export default app;

@@ -7,14 +7,15 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "tsx src/index.ts",
     "postinstall": "prisma skills sync || exit 0",
     "typecheck": "tsc --noEmit",
     "contract:emit": "prisma contract emit",
     "db:seed": "tsx src/scripts/seed.ts",
     "test": "dotenv run -q -f .env.test -- vitest run",
     "test:watch": "dotenv run -q -f .env.test -- vitest",
-    "db:test:migrate": "dotenv run -q -f .env.test -- sh -c 'prisma db migrate --db \"$DATABASE_URL\"'"
+    "db:test:migrate": "dotenv run -q -f .env.test -- sh -c 'prisma db migrate --db \"$DATABASE_URL\"'",
+     "db:migrate": "prisma db migrate --db \"$DATABASE_URL\""
   },
   "keywords": [],
   "author": "",
@@ -29,7 +30,8 @@
     "cors": "^2.8.6",
     "dotenv": "^18.0.4",
     "express": "^5.2.1",
-    "zod": "^4.6.5"
+    "zod": "^4.6.5",
+    "tsx": "^4.23.15"
   },
   "devDependencies": {
     "@prisma/cli-engine": "0.6.1",
@@ -40,7 +42,6 @@
     "@types/supertest": "^7.2.1",
     "prisma": "8.0.0-rc.15",
     "supertest": "^7.3.1",
-    "tsx": "^4.23.15",
     "typescript": "~6.0.3",
     "vitest": "^5.0.4"
   }
