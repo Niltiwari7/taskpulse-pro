@@ -395,7 +395,7 @@ export async function updateWorkspaceMemberRole(
         .aggregate((agg) => ({ adminCount: agg.count() }));
 
       if(adminCount === 1) {
-        res.status(400).json({
+        res.status(409).json({
           error: {
             code: 'LAST_ADMIN',
             message: 'You can not demote the last admin.',
@@ -450,7 +450,7 @@ export async function removeMemberFromWorkspace(
         .aggregate((agg) => ({ adminCount: agg.count() }));
 
       if (adminCount === 1) {
-        res.status(400).json({
+        res.status(409).json({
           error: {
             code: 'LAST_ADMIN',
             message: 'You can not remove the last admin.',
