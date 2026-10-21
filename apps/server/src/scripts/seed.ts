@@ -82,6 +82,17 @@ async function seedMemberships() {
     update: { role: 'ADMIN' },
     conflictOn: { workspaceId: 'seed-workspace-1', userId: 'seed-user-alice' },
   });
+
+  // Bob shares Alice's workspace, so both see it on their dashboards.
+  await db.orm.public.WorkspaceMember.upsert({
+    create: {
+      workspaceId: 'seed-workspace-1',
+      userId: 'seed-user-bob',
+      role: 'MEMBER',
+    },
+    update: { role: 'MEMBER' },
+    conflictOn: { workspaceId: 'seed-workspace-1', userId: 'seed-user-bob' },
+  });
 }
 
 async function seedLists() {

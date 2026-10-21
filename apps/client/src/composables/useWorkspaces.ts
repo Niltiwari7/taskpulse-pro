@@ -19,6 +19,7 @@ import { useWorkspaceStore } from "@/stores/workspace";
 export const workspaceKeys = {
   all: ["workspaces"] as const,
   list: () => [...workspaceKeys.all, "list"] as const,
+  members: (workspaceId: string) => [...workspaceKeys.all, workspaceId, "members"] as const,
 };
 
 export function useWorkspacesQuery() {

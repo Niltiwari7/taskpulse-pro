@@ -77,6 +77,12 @@ const router = createRouter({
           name: 'dashboard',
           component: () => import('@/pages/dashboard/DashboardView.vue'),
         },
+        {
+          path: 'workspaces/:workspaceId/members',
+          name: 'workspace-members',
+          component: () => import('@/pages/workspace/MembersView.vue'),
+          props: true,                  // passes :workspaceId to the page as a prop
+        },
         // Future routes added here (W05 boards, W07 cards, etc.):
         // { path: 'boards/:boardId', name: 'board', component: () => import(...) },
       ],

@@ -22,7 +22,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LayoutDashboard, LogOut, Menu, SquareKanban, X } from "@lucide/vue";
+import { LayoutDashboard, LogOut, Menu, SquareKanban, Users, X } from "@lucide/vue";
+import { useCurrentWorkspace } from "@/composables/useWorkspaces";
 
 const route = useRoute()
 const router = useRouter()
@@ -32,10 +33,16 @@ const queryClient = useQueryClient()
 
 const initial = computed(() => authStore.user?.email?.charAt(0).toUpperCase() ?? "?")
 
+const currentWorkspace = useCurrentWorkspace()
+
 // Add an entry here when a new page gets a route (boards, settings, …)
-const navItems = [
+const navItems = computed(() => [
   { label: "Work", to: { name: "dashboard" }, icon: LayoutDashboard },
-]
+  // Workspace pages only make sense once a workspace exists
+  ...(currentWorkspace.value
+    ? [{ label: "Members", to: { name: "workspace-members", params: { workspaceId: currentWorkspace.value.id } }, icon: Users }]
+    : []),
+])
 
 // Mobile drawer — close it whenever the user navigates
 const sidebarOpen = ref(false)

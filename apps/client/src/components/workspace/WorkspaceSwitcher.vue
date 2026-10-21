@@ -4,7 +4,7 @@
 -->
 <script setup lang="ts">
 import { ref } from "vue";
-import { Check, ChevronsUpDown, Plus } from "@lucide/vue";
+import { Check, ChevronsUpDown, Plus, Users } from "@lucide/vue";
 
 import {
   DropdownMenu,
@@ -68,6 +68,12 @@ const createOpen = ref(false);
 
       <DropdownMenuSeparator class="my-0" />
       <div class="p-1">
+        <DropdownMenuItem v-if="currentWorkspace" as-child class="cursor-pointer font-medium">
+          <RouterLink :to="{ name: 'workspace-members', params: { workspaceId: currentWorkspace.id } }">
+            <Users />
+            Manage members
+          </RouterLink>
+        </DropdownMenuItem>
         <DropdownMenuItem class="cursor-pointer font-medium" @select="createOpen = true">
           <Plus />
           Create workspace
