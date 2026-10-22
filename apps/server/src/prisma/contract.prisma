@@ -99,6 +99,7 @@ model Board {
   visibility           BoardVisibility
   backgroundColorOrUrl String?
   createdAt            TimestamptzString @default(now())
+  archivedAt TimestamptzString?
 
   workspace Workspace @relation(fields: [workspaceId], references: [id])
 

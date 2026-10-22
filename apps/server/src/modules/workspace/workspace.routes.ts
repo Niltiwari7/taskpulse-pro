@@ -10,7 +10,8 @@ import {
   listWorkspaceMembers,
   addMemberToWorkspace,
   removeMemberFromWorkspace,
-  updateWorkspaceMemberRole
+  updateWorkspaceMemberRole,
+  createBoard
 } from './workspace.controller';
 
 const workspaceRouter = Router();
@@ -30,6 +31,8 @@ workspaceRouter.get('/:workspaceId/members', requireWorkspaceRole('MEMBER'), lis
 workspaceRouter.post('/:workspaceId/members', requireWorkspaceRole('ADMIN'), addMemberToWorkspace);
 workspaceRouter.delete('/:workspaceId/members/:userId', requireWorkspaceRole('ADMIN'), removeMemberFromWorkspace);
 workspaceRouter.patch('/:workspaceId/members/:userId', requireWorkspaceRole('ADMIN'), updateWorkspaceMemberRole);
+
+workspaceRouter.post('/:workspaceId/boards', requireAuth, createBoard);
 
 
 export default workspaceRouter;

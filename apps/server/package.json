@@ -15,7 +15,7 @@
     "test": "dotenv run -q -f .env.test -- vitest run",
     "test:watch": "dotenv run -q -f .env.test -- vitest",
     "db:test:migrate": "dotenv run -q -f .env.test -- sh -c 'prisma db migrate --db \"$DATABASE_URL\"'",
-     "db:migrate": "prisma db migrate --db \"$DATABASE_URL\""
+    "db:migrate": "dotenv run -q -f .env -- sh -c 'prisma db migrate --db \"$DATABASE_URL\"'"
   },
   "keywords": [],
   "author": "",

@@ -469,3 +469,11 @@ export async function removeMemberFromWorkspace(
     next(error);
   }
 }
+
+/**
+ * 
+ * @route POST /boards
+ * @description create a board
+ * @access Only workspace MEMBER
+ */
+export const createBoard = async(req: Request, res: Response, next: NextFunction): Promise<void> => {}

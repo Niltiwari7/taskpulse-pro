@@ -422,6 +422,13 @@
           },
           "Board": {
             "fields": {
+              "archivedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
               "backgroundColorOrUrl": {
                 "nullable": true,
                 "type": {
@@ -566,6 +573,9 @@
             },
             "storage": {
               "fields": {
+                "archivedAt": {
+                  "column": "archivedAt"
+                },
                 "backgroundColorOrUrl": {
                   "column": "backgroundColorOrUrl"
                 },
@@ -2680,6 +2690,11 @@
                 }
               ],
               "columns": {
+                "archivedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
                 "backgroundColorOrUrl": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
@@ -4193,7 +4208,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "6f9058512882853b4a7643e4ae9a3080acb0becb25e4da0b2615b963a92d9093"
+    "storageHash": "8781289c643ddb345e2ee12ab54df993fb514f617c27c33332669caf6df9394a"
   },
   "execution": {
     "executionHash": "d4ef3a3b187c83f27c1a35c56c0647529fbcdecbc84394b8dae05091890bac1a",

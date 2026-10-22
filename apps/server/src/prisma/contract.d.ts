@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'6f9058512882853b4a7643e4ae9a3080acb0becb25e4da0b2615b963a92d9093'>;
+  StorageHashBase<'8781289c643ddb345e2ee12ab54df993fb514f617c27c33332669caf6df9394a'>;
 export type ExecutionHash =
   ExecutionHashBase<'d4ef3a3b187c83f27c1a35c56c0647529fbcdecbc84394b8dae05091890bac1a'>;
 export type ProfileHash =
@@ -275,6 +275,7 @@ export type FieldOutputTypes = {
       readonly visibility: 'PRIVATE' | 'WORKSPACE' | 'PUBLIC';
       readonly backgroundColorOrUrl: CodecTypes['pg/text@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly archivedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
     };
     readonly BoardMember: {
       readonly id: CodecTypes['pg/text@1']['output'];
@@ -425,6 +426,7 @@ export type FieldInputTypes = {
       readonly visibility: 'PRIVATE' | 'WORKSPACE' | 'PUBLIC';
       readonly backgroundColorOrUrl: CodecTypes['pg/text@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly archivedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
     };
     readonly BoardMember: {
       readonly id: CodecTypes['pg/text@1']['input'];
@@ -569,6 +571,7 @@ export type StorageColumnTypes = {
       readonly userId: CodecTypes['pg/text@1']['output'];
     };
     readonly Board: {
+      readonly archivedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
       readonly backgroundColorOrUrl: CodecTypes['pg/text@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
@@ -719,6 +722,7 @@ export type StorageColumnInputTypes = {
       readonly userId: CodecTypes['pg/text@1']['input'];
     };
     readonly Board: {
+      readonly archivedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
       readonly backgroundColorOrUrl: CodecTypes['pg/text@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
@@ -907,6 +911,7 @@ export namespace Models {
     visibility: 'PRIVATE' | 'WORKSPACE' | 'PUBLIC';
     backgroundColorOrUrl: CodecTypes['pg/text@1']['output'] | null;
     createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    archivedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
     activities: public_Activity[];
     customFields: public_CustomField[];
     labels: public_Label[];
@@ -1355,6 +1360,11 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/timestamptz-string@1';
                   readonly nullable: false;
                   readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+                readonly archivedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: true;
                 };
               };
               primaryKey: { readonly columns: readonly ['id'] };
@@ -2690,6 +2700,13 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/timestamptz-string@1';
                 };
               };
+              readonly archivedAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
             };
             readonly relations: {
               readonly activities: {
@@ -2767,6 +2784,7 @@ type ContractBase = Omit<
                 readonly visibility: { readonly column: 'visibility' };
                 readonly backgroundColorOrUrl: { readonly column: 'backgroundColorOrUrl' };
                 readonly createdAt: { readonly column: 'createdAt' };
+                readonly archivedAt: { readonly column: 'archivedAt' };
               };
             };
           };
