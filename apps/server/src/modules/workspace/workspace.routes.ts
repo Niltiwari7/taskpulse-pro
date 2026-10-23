@@ -32,7 +32,7 @@ workspaceRouter.post('/:workspaceId/members', requireWorkspaceRole('ADMIN'), add
 workspaceRouter.delete('/:workspaceId/members/:userId', requireWorkspaceRole('ADMIN'), removeMemberFromWorkspace);
 workspaceRouter.patch('/:workspaceId/members/:userId', requireWorkspaceRole('ADMIN'), updateWorkspaceMemberRole);
 
-workspaceRouter.post('/:workspaceId/boards', requireAuth, createBoard);
+workspaceRouter.post('/:workspaceId/boards', requireWorkspaceRole('MEMBER'), createBoard);
 
 
 export default workspaceRouter;

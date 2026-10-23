@@ -4,7 +4,8 @@ import {
   createWorkspaceSchema,
   updateWorkspaceSchema,
   inviteMemberSchema,
-  updateMemberRoleSchema
+  updateMemberRoleSchema,
+  createBoardSchema
 } from '@taskpulse/shared-types';
 import { isUniqueViolation } from '../../utils/isUniqueViolation';
 
@@ -471,9 +472,55 @@ export async function removeMemberFromWorkspace(
 }
 
 /**
- * 
- * @route POST /boards
- * @description create a board
- * @access Only workspace MEMBER
+ * @route POST /workspaces/:workspaceId/boards
+ * @description create a board in the workspace; the creator becomes its board ADMIN
+ * @access workspace MEMBER or ADMIN (requireWorkspaceRole)
  */
-export const createBoard = async(req: Request, res: Response, next: NextFunction): Promise<void> => {}
+export async function createBoard(
+  req: Request<WorkspaceParams>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const parsed = createBoardSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid board data.',
+          details: parsed.error.flatten(),
+        },
+      });
+      return;
+    }
+
+    // requireWorkspaceRole already rejected a missing workspaceId and non-members.
+    const { workspaceId } = req.params;
+    const userId = req.user!.id;
+
+    // Create the board and its ADMIN membership together.
+    const board = await db.transaction(async (tx) => {
+      const newBoard = await tx.orm.public.Board.create({
+        workspaceId,
+        name: parsed.data.name,
+        visibility: parsed.data.visibility,
+        backgroundColorOrUrl: parsed.data.backgroundColorOrUrl ?? null,
+      });
+
+      await tx.orm.public.BoardMember.create({
+        boardId: newBoard.id,
+        userId,
+        role: 'ADMIN',
+      });
+
+      return newBoard;
+    });
+
+    res.status(201).json({
+      data: { board },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
