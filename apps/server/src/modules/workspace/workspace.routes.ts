@@ -10,9 +10,9 @@ import {
   listWorkspaceMembers,
   addMemberToWorkspace,
   removeMemberFromWorkspace,
-  updateWorkspaceMemberRole,
-  createBoard
+  updateWorkspaceMemberRole
 } from './workspace.controller';
+import { createBoard, listBoards } from '../board/board.controller';
 
 const workspaceRouter = Router();
 
@@ -32,7 +32,9 @@ workspaceRouter.post('/:workspaceId/members', requireWorkspaceRole('ADMIN'), add
 workspaceRouter.delete('/:workspaceId/members/:userId', requireWorkspaceRole('ADMIN'), removeMemberFromWorkspace);
 workspaceRouter.patch('/:workspaceId/members/:userId', requireWorkspaceRole('ADMIN'), updateWorkspaceMemberRole);
 
+// Boards in the workspace
 workspaceRouter.post('/:workspaceId/boards', requireWorkspaceRole('MEMBER'), createBoard);
+workspaceRouter.get('/:workspaceId/boards', requireWorkspaceRole('MEMBER'), listBoards);
 
 
 export default workspaceRouter;

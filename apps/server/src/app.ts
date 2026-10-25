@@ -25,7 +25,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/workspaces', workspaceRouter);
-app.use('/api/v1/workspaces/',boardRouter);
+app.use('/api/v1/boards', boardRouter);
 
 
 app.get('/api/v1/health', (_req,res) => {

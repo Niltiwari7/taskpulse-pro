@@ -215,4 +215,20 @@ describe('Workspace CRUD integration tests', () => {
       .all();
     expect(remaining).toHaveLength(0);
   });
+
+  it('deletes a workspace that has boards, along with the boards', async () => {
+    const a = await loginAsNewUser();
+    const workspace = await createWorkspace(a.agent);
+    const boardRes = await a.agent
+      .post(`${baseUrl}/${workspace.id}/boards`)
+      .send({ name: 'Roadmap' });
+    expect(boardRes.status).toBe(201);
+    const boardId = boardRes.body.data.board.id as string;
+
+    const res = await a.agent.delete(`${baseUrl}/${workspace.id}`);
+    expect(res.status).toBe(204);
+
+    expect(await db.orm.public.Board.where({ id: boardId }).first()).toBeNull();
+    expect(await db.orm.public.BoardMember.where({ boardId }).first()).toBeNull();
+  });
 });

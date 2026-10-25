@@ -1,64 +1,362 @@
-import {Request, Response, NextFunction} from 'express';
-import {db} from '../../prisma/db';
-import {canAccessBoard} from './board.access';
+import type { Request, Response, NextFunction } from 'express';
+import { db } from '../../prisma/db';
+import {
+  createBoardSchema,
+  updateBoardSchema,
+  type BoardMemberRole,
+  type WorkspaceRole,
+} from '@taskpulse/shared-types';
+import { canAccessBoard } from './board.access';
 
-export const getBoards = async(req: Request, res: Response, next: NextFunction) => {
-  try{
-   const { boardId } = req.params;
+type WorkspaceParams = { workspaceId: string };
+type BoardParams = { boardId: string };
 
-   if(typeof boardId !== 'string' || !boardId.trim()){
-     res.status(400).json({
-       error: {
-         code: 'VALIDATION_ERROR',
-         message: 'Invalid board id.',
-       },
-     });
-     return;
-   }
+type BoardRow = {
+  id: string;
+  workspaceId: string;
+  name: string;
+  visibility: 'PUBLIC' | 'PRIVATE' | 'WORKSPACE';
+  backgroundColorOrUrl: string | null;
+  archivedAt: string | null;
+  createdAt: string;
+};
 
-   // Find the board by Id
-   const board = await db.orm.public.Board.where({ id: boardId}).first();
-   
-   if(!board){
-     res.status(404).json({
-       error: {
-         code: 'BOARD_NOT_FOUND',
-         message: 'Board not found.',
-       },
-     });
-     return;
-   }
-   
-   // requireAuth guarantees req.user
-   const userId = req.user!.id;
+function toBoardResponse(board: BoardRow) {
+  return {
+    id: board.id,
+    workspaceId: board.workspaceId,
+    name: board.name,
+    visibility: board.visibility,
+    backgroundColorOrUrl: board.backgroundColorOrUrl,
+    archivedAt: board.archivedAt,
+    createdAt: board.createdAt,
+  };
+}
 
-   // Lookup the user's role in the board's workspace (null = not a member)
-   const workspaceMember = await db.orm.public.WorkspaceMember.where({
-     workspaceId: board.workspaceId,
-     userId,
-   }).first();
-   const workspaceRole = workspaceMember?.role ?? null;
+function sendNotFound(res: Response): void {
+  res.status(404).json({
+    error: {
+      code: 'NOT_FOUND',
+      message: 'Board not found.',
+    },
+  });
+}
 
-   // Lookup the user's role on this board (null = not a member)
-   const boardMember = await db.orm.public.BoardMember.where({
-     boardId: board.id,
-     userId,
-   }).first();
-   const boardRole = boardMember?.role ?? null;
+function sendForbidden(res: Response): void {
+  res.status(403).json({
+    error: {
+      code: 'FORBIDDEN',
+      message: 'You do not have permission to do this.',
+    },
+  });
+}
 
-   // 404 rather than 403 so we don't leak that the board exists
-   if(!canAccessBoard({ workspaceRole, boardRole }, board)){
-     res.status(404).json({
-       error: {
-         code: 'BOARD_NOT_FOUND',
-         message: 'Board not found.',
-       },
-     });
-     return;
-   }
+type BoardContext = {
+  board: BoardRow;
+  workspaceRole: WorkspaceRole | null;
+  boardRole: BoardMemberRole | null;
+};
 
-   res.status(200).json({ board, workspaceRole, boardRole });
-  }catch(error){
+// Loads the board plus the current user's roles for it.
+// Returns null (and has already sent a 404) when the board is missing or the user may not see it;
+// 404 rather than 403 so non-members can't learn that the board exists.
+async function loadAccessibleBoard(
+  req: Request<BoardParams>,
+  res: Response,
+): Promise<BoardContext | null> {
+  const board = await db.orm.public.Board.where({ id: req.params.boardId }).first();
+
+  if (!board) {
+    sendNotFound(res);
+    return null;
+  }
+
+  // requireAuth guarantees req.user
+  const userId = req.user!.id;
+
+  const workspaceMember = await db.orm.public.WorkspaceMember
+    .where({ workspaceId: board.workspaceId, userId })
+    .select('role')
+    .first();
+  const boardMember = await db.orm.public.BoardMember
+    .where({ boardId: board.id, userId })
+    .select('role')
+    .first();
+
+  const workspaceRole = workspaceMember?.role ?? null;
+  const boardRole = boardMember?.role ?? null;
+
+  if (!canAccessBoard({ workspaceRole, boardRole }, board)) {
+    sendNotFound(res);
+    return null;
+  }
+
+  return { board, workspaceRole, boardRole };
+}
+
+// Board admins manage their board; workspace admins can manage every board in the workspace.
+function isBoardAdmin({ workspaceRole, boardRole }: BoardContext): boolean {
+  return boardRole === 'ADMIN' || workspaceRole === 'ADMIN';
+}
+
+/**
+ * @route POST /workspaces/:workspaceId/boards
+ * @description create a board in the workspace; the creator becomes its board ADMIN
+ * @access workspace MEMBER or ADMIN (requireWorkspaceRole)
+ */
+export async function createBoard(
+  req: Request<WorkspaceParams>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const parsed = createBoardSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid board data.',
+          details: parsed.error.flatten(),
+        },
+      });
+      return;
+    }
+
+    // requireWorkspaceRole already rejected a missing workspaceId and non-members.
+    const { workspaceId } = req.params;
+    const userId = req.user!.id;
+
+    // Create the board and its ADMIN membership together.
+    const board = await db.transaction(async (tx) => {
+      const newBoard = await tx.orm.public.Board.create({
+        workspaceId,
+        name: parsed.data.name,
+        visibility: parsed.data.visibility,
+        backgroundColorOrUrl: parsed.data.backgroundColorOrUrl ?? null,
+      });
+
+      await tx.orm.public.BoardMember.create({
+        boardId: newBoard.id,
+        userId,
+        role: 'ADMIN',
+      });
+
+      return newBoard;
+    });
+
+    res.status(201).json({
+      data: { board: toBoardResponse(board) },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * @route GET /workspaces/:workspaceId/boards
+ * @description list the open (not archived) boards in a workspace that the user can see
+ * @access workspace MEMBER or ADMIN (requireWorkspaceRole)
+ */
+export async function listBoards(
+  req: Request<WorkspaceParams>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { workspaceId } = req.params;
+    const userId = req.user!.id;
+
+    const boards = await db.orm.public.Board
+      .where({ workspaceId })
+      .where((b) => b.archivedAt.isNull())
+      .orderBy([(b) => b.createdAt.desc(), (b) => b.id.desc()])
+      .all();
+
+    const workspaceMember = await db.orm.public.WorkspaceMember
+      .where({ workspaceId, userId })
+      .select('role')
+      .first();
+    const workspaceRole = workspaceMember?.role ?? null;
+
+    const boardIds = boards.map((b) => b.id);
+    const boardMemberships = boardIds.length === 0
+      ? []
+      : await db.orm.public.BoardMember
+        .where({ userId })
+        .where((m) => m.boardId.in(boardIds))
+        .select('boardId', 'role')
+        .all();
+    const boardRoles = new Map(boardMemberships.map((m) => [m.boardId, m.role]));
+
+    // Same rule as GET /boards/:boardId, so a PRIVATE board never shows up for someone who can't open it.
+    const visibleBoards = boards.filter((board) =>
+      canAccessBoard({ workspaceRole, boardRole: boardRoles.get(board.id) ?? null }, board),
+    );
+
+    res.status(200).json({
+      data: { boards: visibleBoards.map(toBoardResponse) },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * @route GET /boards/:boardId
+ * @description get a board
+ * @access anyone canAccessBoard allows
+ */
+export async function getBoard(
+  req: Request<BoardParams>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const ctx = await loadAccessibleBoard(req, res);
+    if (!ctx) return;
+
+    res.status(200).json({
+      data: { board: toBoardResponse(ctx.board) },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * @route PATCH /boards/:boardId
+ * @description update a board's name, visibility or background
+ * @access board ADMIN or workspace ADMIN
+ */
+export async function updateBoard(
+  req: Request<BoardParams>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const ctx = await loadAccessibleBoard(req, res);
+    if (!ctx) return;
+
+    if (!isBoardAdmin(ctx)) {
+      sendForbidden(res);
+      return;
+    }
+
+    const parsed = updateBoardSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid board data.',
+          details: parsed.error.flatten(),
+        },
+      });
+      return;
+    }
+
+    const board = await db.orm.public.Board
+      .where({ id: ctx.board.id })
+      .update(parsed.data);
+
+    if (!board) {
+      sendNotFound(res);
+      return;
+    }
+
+    res.status(200).json({
+      data: { board: toBoardResponse(board) },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * @route POST /boards/:boardId/archive
+ * @description archive a board (soft delete: sets archivedAt)
+ * @access board ADMIN or workspace ADMIN
+ */
+export async function archiveBoard(
+  req: Request<BoardParams>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const ctx = await loadAccessibleBoard(req, res);
+    if (!ctx) return;
+
+    if (!isBoardAdmin(ctx)) {
+      sendForbidden(res);
+      return;
+    }
+
+    // Archiving twice keeps the original timestamp.
+    if (ctx.board.archivedAt) {
+      res.status(200).json({
+        data: { board: toBoardResponse(ctx.board) },
+      });
+      return;
+    }
+
+    const board = await db.orm.public.Board
+      .where({ id: ctx.board.id })
+      .update({ archivedAt: new Date().toISOString() });
+
+    if (!board) {
+      sendNotFound(res);
+      return;
+    }
+
+    res.status(200).json({
+      data: { board: toBoardResponse(board) },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * @route DELETE /boards/:boardId
+ * @description permanently delete an archived board and its memberships
+ * @access board ADMIN or workspace ADMIN
+ */
+export async function deleteBoard(
+  req: Request<BoardParams>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const ctx = await loadAccessibleBoard(req, res);
+    if (!ctx) return;
+
+    if (!isBoardAdmin(ctx)) {
+      sendForbidden(res);
+      return;
+    }
+
+    // Board lifecycle is OPEN -> ARCHIVED -> deleted, so an open board can't be deleted directly.
+    if (!ctx.board.archivedAt) {
+      res.status(409).json({
+        error: {
+          code: 'BOARD_NOT_ARCHIVED',
+          message: 'Archive the board before deleting it.',
+        },
+      });
+      return;
+    }
+
+    const boardId = ctx.board.id;
+
+    // Members reference the board, so they go first.
+    await db.transaction(async (tx) => {
+      await tx.orm.public.BoardMember.where({ boardId }).deleteAll();
+      await tx.orm.public.Board.where({ id: boardId }).delete();
+    });
+
+    res.status(204).end();
+  } catch (error) {
     next(error);
   }
 }

@@ -8,7 +8,6 @@ export interface Board {
   archivedAt: string | null;
   backgroundColorOrUrl: string | null;
   createdAt: string;
-  updatedAt: string;
 }
 
 const name = z
