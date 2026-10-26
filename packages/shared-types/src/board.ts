@@ -37,3 +37,6 @@ export const updateBoardSchema = z
     (data) => Object.keys(data).length > 0,
     { message: 'At least one field must be provided' }
   );
+
+export type CreateBoardInput = z.input<typeof createBoardSchema>;
+export type UpdateBoardInput = z.input<typeof updateBoardSchema>;

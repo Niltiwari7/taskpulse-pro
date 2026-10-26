@@ -7,13 +7,16 @@
 -->
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { AlertCircle, FolderPlus, PlusCircle, Search } from "@lucide/vue";
+import { AlertCircle, FolderPlus, Plus, PlusCircle, Search } from "@lucide/vue";
 
+import BoardCard from "@/components/board/BoardCard.vue";
+import CreateBoardDialog from "@/components/board/CreateBoardDialog.vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import CreateWorkspaceDialog from "@/components/workspace/CreateWorkspaceDialog.vue";
 import WorkspaceCard from "@/components/workspace/WorkspaceCard.vue";
+import { useBoardsQuery } from "@/composables/useBoards";
 import { useCurrentWorkspace, useWorkspacesQuery } from "@/composables/useWorkspaces";
 import { useWorkspaceStore } from "@/stores/workspace";
 
@@ -21,7 +24,20 @@ const workspaceStore = useWorkspaceStore();
 const { data: workspaces, isPending, isError, error, refetch, isFetching } = useWorkspacesQuery();
 const currentWorkspace = useCurrentWorkspace();
 
+// Boards of the selected workspace; the key follows the switcher, so picking
+// another workspace swaps the grid without any extra wiring.
+const currentWorkspaceId = computed(() => currentWorkspace.value?.id);
+const {
+  data: boards,
+  isPending: boardsPending,
+  isError: boardsIsError,
+  error: boardsError,
+  refetch: refetchBoards,
+  isFetching: boardsFetching,
+} = useBoardsQuery(currentWorkspaceId);
+
 const createOpen = ref(false);
+const createBoardOpen = ref(false);
 const search = ref("");
 
 const filteredWorkspaces = computed(() => {
@@ -86,6 +102,50 @@ const filteredWorkspaces = computed(() => {
 
     <!-- 4. Data -->
     <template v-else>
+      <!-- Boards of the selected workspace come first: they're where the work happens -->
+      <section v-if="currentWorkspace" class="mb-12" aria-labelledby="boards-heading">
+        <div class="mb-4 flex items-center justify-between gap-4">
+          <h2 id="boards-heading" class="line-clamp-1 text-lg font-semibold">
+            Boards in {{ currentWorkspace.name }}
+          </h2>
+          <Button variant="outline" size="sm" class="shrink-0" @click="createBoardOpen = true">
+            <Plus />
+            New board
+          </Button>
+        </div>
+
+        <div v-if="boardsPending" class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <Skeleton v-for="n in 4" :key="n" class="h-28 rounded-xl" />
+        </div>
+
+        <div
+          v-else-if="boardsIsError"
+          role="alert"
+          class="flex items-center justify-between gap-4 rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm"
+        >
+          <span>Couldn't load boards: {{ boardsError?.message }}</span>
+          <Button variant="outline" size="sm" :disabled="boardsFetching" @click="refetchBoards()">
+            {{ boardsFetching ? "Retrying..." : "Try again" }}
+          </Button>
+        </div>
+
+        <div v-else class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <BoardCard v-for="board in boards" :key="board.id" :board="board" />
+          <!-- Always-visible tile doubles as the empty state -->
+          <button
+            type="button"
+            class="flex h-28 flex-col items-center justify-center gap-1 rounded-xl border border-dashed text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            @click="createBoardOpen = true"
+          >
+            <Plus class="size-5" />
+            Create board
+          </button>
+        </div>
+
+        <CreateBoardDialog v-model:open="createBoardOpen" :workspace-id="currentWorkspace.id" />
+      </section>
+
+      <h2 class="mb-4 text-lg font-semibold">All workspaces</h2>
       <div class="relative mb-6 max-w-md">
         <Search class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input v-model="search" type="search" placeholder="Search workspaces..." class="pl-9" aria-label="Search workspaces" />
