@@ -97,12 +97,16 @@
                 "value": "ADMIN"
               },
               {
-                "name": "NORMAL",
-                "value": "NORMAL"
+                "name": "MEMBER",
+                "value": "MEMBER"
               },
               {
                 "name": "OBSERVER",
                 "value": "OBSERVER"
+              },
+              {
+                "name": "GUEST",
+                "value": "GUEST"
               }
             ]
           },
@@ -2774,8 +2778,8 @@
             "BoardMember": {
               "checks": [
                 {
-                  "expression": "\"role\" IN ('ADMIN', 'NORMAL', 'OBSERVER')",
-                  "name": "BoardMember_role_check_35f881c2",
+                  "expression": "\"role\" IN ('ADMIN', 'MEMBER', 'OBSERVER', 'GUEST')",
+                  "name": "BoardMember_role_check_364ae04d",
                   "prefix": "BoardMember_role_check"
                 }
               ],
@@ -4166,8 +4170,9 @@
               "kind": "valueSet",
               "values": [
                 "ADMIN",
-                "NORMAL",
-                "OBSERVER"
+                "MEMBER",
+                "OBSERVER",
+                "GUEST"
               ]
             },
             "BoardVisibility": {
@@ -4208,7 +4213,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "8781289c643ddb345e2ee12ab54df993fb514f617c27c33332669caf6df9394a"
+    "storageHash": "550418294928c7bf9fee20fd849862de9a4eb1f2b96fff5fa85891b31749625a"
   },
   "execution": {
     "executionHash": "d4ef3a3b187c83f27c1a35c56c0647529fbcdecbc84394b8dae05091890bac1a",

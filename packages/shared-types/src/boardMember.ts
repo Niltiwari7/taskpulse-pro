@@ -1,4 +1,4 @@
-export type BoardMemberRole = "ADMIN" | "NORMAL" | "OBSERVER";
+export type BoardMemberRole = "ADMIN" | "MEMBER" | "OBSERVER" | "GUEST";
 
 export interface boardMember {
   id : string,

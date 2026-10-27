@@ -18,8 +18,9 @@ enum BoardVisibility {
 
 enum BoardMemberRole {
   ADMIN
-  NORMAL
+  MEMBER
   OBSERVER
+  GUEST
 }
 
 enum CustomFieldType {

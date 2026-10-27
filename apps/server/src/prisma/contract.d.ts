@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'8781289c643ddb345e2ee12ab54df993fb514f617c27c33332669caf6df9394a'>;
+  StorageHashBase<'550418294928c7bf9fee20fd849862de9a4eb1f2b96fff5fa85891b31749625a'>;
 export type ExecutionHash =
   ExecutionHashBase<'d4ef3a3b187c83f27c1a35c56c0647529fbcdecbc84394b8dae05091890bac1a'>;
 export type ProfileHash =
@@ -281,7 +281,7 @@ export type FieldOutputTypes = {
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly boardId: CodecTypes['pg/text@1']['output'];
       readonly userId: CodecTypes['pg/text@1']['output'];
-      readonly role: 'ADMIN' | 'NORMAL' | 'OBSERVER';
+      readonly role: 'ADMIN' | 'MEMBER' | 'OBSERVER' | 'GUEST';
       readonly joinedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
     readonly Card: {
@@ -432,7 +432,7 @@ export type FieldInputTypes = {
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly boardId: CodecTypes['pg/text@1']['input'];
       readonly userId: CodecTypes['pg/text@1']['input'];
-      readonly role: 'ADMIN' | 'NORMAL' | 'OBSERVER';
+      readonly role: 'ADMIN' | 'MEMBER' | 'OBSERVER' | 'GUEST';
       readonly joinedAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
     readonly Card: {
@@ -583,7 +583,7 @@ export type StorageColumnTypes = {
       readonly boardId: CodecTypes['pg/text@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly joinedAt: CodecTypes['pg/timestamptz-string@1']['output'];
-      readonly role: 'ADMIN' | 'NORMAL' | 'OBSERVER';
+      readonly role: 'ADMIN' | 'MEMBER' | 'OBSERVER' | 'GUEST';
       readonly userId: CodecTypes['pg/text@1']['output'];
     };
     readonly Card: {
@@ -734,7 +734,7 @@ export type StorageColumnInputTypes = {
       readonly boardId: CodecTypes['pg/text@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly joinedAt: CodecTypes['pg/timestamptz-string@1']['input'];
-      readonly role: 'ADMIN' | 'NORMAL' | 'OBSERVER';
+      readonly role: 'ADMIN' | 'MEMBER' | 'OBSERVER' | 'GUEST';
       readonly userId: CodecTypes['pg/text@1']['input'];
     };
     readonly Card: {
@@ -925,7 +925,7 @@ export namespace Models {
     id: CodecTypes['pg/text@1']['output'];
     boardId: CodecTypes['pg/text@1']['output'];
     userId: CodecTypes['pg/text@1']['output'];
-    role: 'ADMIN' | 'NORMAL' | 'OBSERVER';
+    role: 'ADMIN' | 'MEMBER' | 'OBSERVER' | 'GUEST';
     joinedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     board: public_Board;
     user: public_User;
@@ -2445,7 +2445,7 @@ type ContractBase = Omit<
           readonly valueSet: {
             readonly BoardMemberRole: {
               readonly kind: 'valueSet';
-              readonly values: readonly ['ADMIN', 'NORMAL', 'OBSERVER'];
+              readonly values: readonly ['ADMIN', 'MEMBER', 'OBSERVER', 'GUEST'];
             };
             readonly BoardVisibility: {
               readonly kind: 'valueSet';
@@ -4007,8 +4007,9 @@ type ContractBase = Omit<
             readonly codecId: 'pg/text@1';
             readonly members: readonly [
               { readonly name: 'ADMIN'; readonly value: 'ADMIN' },
-              { readonly name: 'NORMAL'; readonly value: 'NORMAL' },
+              { readonly name: 'MEMBER'; readonly value: 'MEMBER' },
               { readonly name: 'OBSERVER'; readonly value: 'OBSERVER' },
+              { readonly name: 'GUEST'; readonly value: 'GUEST' },
             ];
           };
           readonly CustomFieldType: {

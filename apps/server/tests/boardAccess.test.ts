@@ -7,7 +7,7 @@ const users = {
   '2 stranger': { workspaceRole: null, boardRole: null },
   '3 workspace member': { workspaceRole: 'MEMBER', boardRole: null },
   '4 workspace admin': { workspaceRole: 'ADMIN', boardRole: null },
-  '5 workspace + board member': { workspaceRole: 'MEMBER', boardRole: 'NORMAL' },
+  '5 workspace + board member': { workspaceRole: 'MEMBER', boardRole: 'MEMBER' },
   '6 guest': { workspaceRole: null, boardRole: 'OBSERVER' },
 } satisfies Record<string, BoardAccessUser | null>;
 

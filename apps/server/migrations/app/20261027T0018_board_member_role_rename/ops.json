@@ -1,0 +1,122 @@
+[
+  {
+    "id": "dropCheckConstraint.BoardMember.BoardMember_role_check_35f881c2",
+    "label": "Drop check constraint \"BoardMember_role_check_35f881c2\" on \"BoardMember\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "BoardMember_role_check_35f881c2",
+        "table": "BoardMember"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"BoardMember_role_check_35f881c2\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "BoardMember_role_check_35f881c2",
+          "public",
+          "\"public\".\"BoardMember\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop check constraint \"BoardMember_role_check_35f881c2\"",
+        "sql": "ALTER TABLE \"public\".\"BoardMember\" DROP CONSTRAINT \"BoardMember_role_check_35f881c2\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"BoardMember_role_check_35f881c2\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "BoardMember_role_check_35f881c2",
+          "public",
+          "\"public\".\"BoardMember\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "data_migration.rename-BoardMember-role-NORMAL-to-MEMBER",
+    "label": "Data transform: rename-BoardMember-role-NORMAL-to-MEMBER",
+    "operationClass": "data",
+    "target": {
+      "id": "postgres"
+    },
+    "precheck": [
+      {
+        "description": "Check rename-BoardMember-role-NORMAL-to-MEMBER has work to do",
+        "sql": "SELECT EXISTS (SELECT \"id\" AS \"id\" FROM \"public\".\"BoardMember\" WHERE \"role\" = $1 LIMIT 1) AS ok",
+        "params": [
+          "NORMAL"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "Run rename-BoardMember-role-NORMAL-to-MEMBER",
+        "sql": "UPDATE \"public\".\"BoardMember\" SET \"role\" = $1 WHERE \"role\" = $2",
+        "params": [
+          "MEMBER",
+          "NORMAL"
+        ]
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "Verify rename-BoardMember-role-NORMAL-to-MEMBER resolved all violations",
+        "sql": "SELECT NOT EXISTS (SELECT \"id\" AS \"id\" FROM \"public\".\"BoardMember\" WHERE \"role\" = $1 LIMIT 1) AS ok",
+        "params": [
+          "NORMAL"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.BoardMember.BoardMember_role_check_364ae04d",
+    "label": "Add check constraint \"BoardMember_role_check_364ae04d\" on \"BoardMember\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "BoardMember_role_check_364ae04d",
+        "table": "BoardMember"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"BoardMember_role_check_364ae04d\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "BoardMember_role_check_364ae04d",
+          "public",
+          "\"public\".\"BoardMember\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"BoardMember_role_check_364ae04d\"",
+        "sql": "ALTER TABLE \"public\".\"BoardMember\" ADD CONSTRAINT \"BoardMember_role_check_364ae04d\" CHECK (\"role\" IN ('ADMIN', 'MEMBER', 'OBSERVER', 'GUEST'))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"BoardMember_role_check_364ae04d\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "BoardMember_role_check_364ae04d",
+          "public",
+          "\"public\".\"BoardMember\""
+        ]
+      }
+    ]
+  }
+]
