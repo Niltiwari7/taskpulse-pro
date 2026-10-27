@@ -1,15 +1,18 @@
 import type { Request, Response, NextFunction } from 'express';
 import { db } from '../../prisma/db';
 import {
+  addBoardMemberSchema,
   createBoardSchema,
   updateBoardSchema,
   type BoardMemberRole,
   type WorkspaceRole,
 } from '@taskpulse/shared-types';
 import { canAccessBoard } from './board.access';
+import { isUniqueViolation } from '../../utils/isUniqueViolation';
 
 type WorkspaceParams = { workspaceId: string };
 type BoardParams = { boardId: string };
+type BoardMemberParams = {boardId: string, userId: string};
 
 type BoardRow = {
   id: string;
@@ -21,6 +24,8 @@ type BoardRow = {
   createdAt: string;
 };
 
+
+
 function toBoardResponse(board: BoardRow) {
   return {
     id: board.id,
@@ -30,6 +35,38 @@ function toBoardResponse(board: BoardRow) {
     backgroundColorOrUrl: board.backgroundColorOrUrl,
     archivedAt: board.archivedAt,
     createdAt: board.createdAt,
+  };
+}
+
+type BoardMemberRow = {
+  userId: string;
+  role: 'ADMIN' | 'MEMBER' | 'OBSERVER' | 'GUEST';
+  joinedAt: string;
+  user: {
+    id: string;
+    username: string;
+    email: string;
+    fullName: string | null;
+    avatarUrl: string | null;
+  } | null;
+};
+
+function toBoardMemberResponse(member: BoardMemberRow) {
+  // The ORM types the joined user as nullable, but userId is a NOT NULL foreign key,
+  // so every membership row has a user.
+  const user = member.user!;
+
+  return {
+    userId: member.userId,
+    role: member.role,
+    joinedAt: member.joinedAt,
+    user: {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      fullName: user.fullName,
+      avatarUrl: user.avatarUrl,
+    },
   };
 }
 
@@ -356,6 +393,206 @@ export async function deleteBoard(
     });
 
     res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+}
+
+
+/**
+ * @route GET /boards/:boardId/members
+ * @description list the members of a board
+ * @access anyone canAccessBoard allows
+ */
+export async function listBoardMembers(
+  req: Request<BoardParams>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const ctx = await loadAccessibleBoard(req, res);
+    if (!ctx) return;
+
+    // Select only public user columns so passwordHash never leaves the database.
+    const members = await db.orm.public.BoardMember
+      .where({ boardId: ctx.board.id })
+      .select('userId', 'role', 'joinedAt')
+      .include('user', (user) =>
+        user.select('id', 'username', 'email', 'fullName', 'avatarUrl'),
+      )
+      .orderBy([
+        (m) => m.role.asc(),
+        (m) => m.joinedAt.asc(),
+      ])
+      .all();
+
+    res.status(200).json({
+      data: { members: members.map(toBoardMemberResponse) },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+
+/**
+ * @route POST /boards/:boardId/members
+ * @description add a member to a board
+ * @access board ADMIN
+ */
+
+export async function addBoardMember(
+  req: Request<BoardParams>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const ctx = await loadAccessibleBoard(req, res);
+    if (!ctx) return;
+
+    if (!isBoardAdmin(ctx)) {
+      sendForbidden(res);
+      return;
+    }
+
+    const parsed = addBoardMemberSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid board member data.',
+          details: parsed.error.flatten(),
+        },
+      });
+      return;
+    }
+
+    const { email, role } = parsed.data;
+
+    const user = await db.orm.public.User
+      .where({ email })
+      .select('id', 'username', 'email', 'fullName', 'avatarUrl')
+      .first();
+
+    if (!user) {
+      res.status(404).json({
+        error: { code: 'USER_NOT_FOUND', message: 'No user with this email.' },
+      });
+      return;
+    }
+
+    const workspaceMember = await db.orm.public.WorkspaceMember
+      .where({ workspaceId: ctx.board.workspaceId, userId: user.id })
+      .first();
+
+    if (!workspaceMember && role !== 'GUEST') {
+      res.status(422).json({
+        error: {
+          code: 'NOT_WORKSPACE_MEMBER',
+          message: 'Users outside the workspace can only be added as GUEST.',
+        },
+      });
+      return;
+    }
+
+    if (workspaceMember && role === 'GUEST') {
+      res.status(422).json({
+        error: {
+          code: 'INVALID_ROLE',
+          message: 'Workspace members cannot be added as GUEST.',
+        },
+      });
+      return;
+    }
+
+    try {
+      const member = await db.orm.public.BoardMember.create({
+        boardId: ctx.board.id,
+        userId: user.id,
+        role,
+      });
+
+      res.status(201).json({
+        data: { member: toBoardMemberResponse({ ...member, user }) },
+      });
+    } catch (error) {
+      // The unique (boardId, userId) index rejects an existing member,
+      // including two concurrent adds for the same user.
+      if (isUniqueViolation(error)) {
+        res.status(409).json({
+          error: {
+            code: 'ALREADY_MEMBER',
+            message: 'User is already a member of this board.',
+          },
+        });
+        return;
+      }
+      throw error;
+    }
+  } catch (error) {
+    next(error);
+  }
+}
+
+
+/**
+ * @route DELETE /boards/:boardId/members/:userId
+ * @description remove a member from a board
+ * @access board ADMIN
+ */
+
+export async function removeBoardMember(
+  req: Request<BoardMemberParams>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const ctx = await loadAccessibleBoard(req, res);
+
+    if(!ctx) {
+      return;
+    }
+    const isSelf = req.params.userId === req.user?.id;
+    if(!isBoardAdmin(ctx) && !isSelf) {
+      sendForbidden(res);
+      return;
+    }
+
+    const member = await db.orm.public.BoardMember
+      .where({ boardId: ctx.board.id, userId: req.params.userId })
+      .first();
+    
+    if(!member) {
+      res.status(404).json({
+        error: { code: 'MEMBER_NOT_FOUND', message: 'No such member.' },
+      });
+      return;
+    }
+
+    if(member.role === 'ADMIN') {
+      // If he is the last admin
+      const { adminCount } = await db.orm.public.BoardMember
+        .where({ boardId: ctx.board.id, role: 'ADMIN' })
+        .aggregate((agg) => ({ adminCount: agg.count() }));
+
+      if(adminCount === 1) {
+        res.status(409).json({
+          error: {
+            code: 'LAST_BOARD_ADMIN',
+            message: 'You can not remove the last admin.',
+          },
+        });
+        return;
+      }
+    }
+
+    // Delete the member from the board
+    await db.orm.public.BoardMember
+      .where({ boardId: ctx.board.id, userId: req.params.userId })
+      .delete();
+    
+    res.status(204).end()
   } catch (error) {
     next(error);
   }

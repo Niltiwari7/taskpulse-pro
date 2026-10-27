@@ -8,7 +8,8 @@ const users = {
   '3 workspace member': { workspaceRole: 'MEMBER', boardRole: null },
   '4 workspace admin': { workspaceRole: 'ADMIN', boardRole: null },
   '5 workspace + board member': { workspaceRole: 'MEMBER', boardRole: 'MEMBER' },
-  '6 guest': { workspaceRole: null, boardRole: 'OBSERVER' },
+  '6 guest': { workspaceRole: null, boardRole: 'GUEST' },
+  '7 workspace member + board observer': { workspaceRole: 'MEMBER',  boardRole: 'OBSERVER' },
 } satisfies Record<string, BoardAccessUser | null>;
 
 // Mirrors the truth table in docs/permissions.md — keep them in sync.
@@ -20,6 +21,7 @@ const table = [
   ['4 workspace admin',           true,   true,     true],
   ['5 workspace + board member',  true,   true,     true],
   ['6 guest',                     true,   true,     true],
+  ['7 workspace member + board observer', true, true, true],
 ] as const;
 
 describe('canAccessBoard', () => {

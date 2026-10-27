@@ -4,7 +4,10 @@ import {
   archiveBoard,
   deleteBoard,
   getBoard,
+  listBoardMembers,
   updateBoard,
+  addBoardMember,
+  removeBoardMember
 } from './board.controller';
 
 // Routes addressed by board id. The workspace-scoped ones (create, list) live in workspace.routes.ts
@@ -18,5 +21,9 @@ boardRouter.get('/:boardId', getBoard);
 boardRouter.patch('/:boardId', updateBoard);
 boardRouter.post('/:boardId/archive', archiveBoard);
 boardRouter.delete('/:boardId', deleteBoard);
+
+boardRouter.get('/:boardId/members', listBoardMembers);
+boardRouter.post('/:boardId/members', addBoardMember);
+boardRouter.delete('/:boardId/members/:userId', removeBoardMember);
 
 export default boardRouter;
