@@ -162,7 +162,28 @@ Only the read-access cells change. Who may *change* the board stays the same.
 
 ---
 
-## 6. Coming later: board content
+## 6. Board content
+
+`canEditBoardContent(user)` in `apps/server/src/modules/board/board.access.ts` decides who may change lists and cards: board `ADMIN` / `MEMBER` / `GUEST`, or workspace `ADMIN`. It runs only after `canAccessBoard` has passed, so a "no" from it is a 403, never a 404.
+
+### List routes
+
+Same actors as [§5](#5-board-routes-role--route-matrix). Expected status on a `WORKSPACE`-visible board:
+
+| Route | Anon | Outsider | ws MEMBER | ws ADMIN | board ADMIN | board MEMBER | OBSERVER | GUEST |
+|---|---|---|---|---|---|---|---|---|
+| `GET /boards/:id/lists` | 401 | 404 | 200 | 200 | 200 | 200 | 200 | 200 |
+| `POST /boards/:id/lists` | 401 | 404 | 403 ¹ | 201 | 201 | 201 | 403 | 201 |
+| `PATCH /lists/:listId` (rename) ³ | 401 | 404 | 403 ¹ | 200 | 200 | 200 | 403 | 200 |
+| `DELETE /boards/:id/lists/:listId` ² | 401 | 404 | 403 ¹ | 204 | 204 | 204 | 403 | 204 |
+
+¹ A ws MEMBER who isn't on the board can see it but not change it. See [Open decisions](#7-open-decisions), item 4.
+² "Delete" **archives** the list (`isArchived = true`). The row and its cards are kept. A `:listId` that isn't on board `:id` → `404`.
+³ Addressed by list id alone; the server finds the board from the list. A list that doesn't exist and a list on a board the user can't see both get the same `404 LIST_NOT_FOUND`, so list ids can't be probed.
+
+Other visibilities follow the same rule as boards: on `PRIVATE`, a ws MEMBER who isn't on the board gets **404** on every list route. On `PUBLIC`, an outsider gets **200** on `GET` and **403** on the write routes.
+
+### Coming later
 
 These rules don't have routes yet. Each week that adds a feature fills in its rows and adds the matching tests.
 
@@ -188,3 +209,5 @@ Settle these before the role-matrix tests are written. Then update the tables ab
 2. **Member emails on PUBLIC boards.** Any logged-in outsider can call `GET /boards/:id/members` on a PUBLIC board and see every member's email.
    Proposal: return the member list without `email` to users who have no board role and aren't in the workspace.
 3. **Leaving a workspace.** `DELETE /workspaces/:id/members/:userId` is ADMIN-only, so a ws MEMBER cannot remove themselves (403). On boards, any member can leave. Decide whether workspaces should allow leaving too.
+4. **ws MEMBER who isn't on the board, editing content.** The §6 table only covers board roles. On a `WORKSPACE` board this user can see the board but has no board role.
+   Proposal (implemented): read-only, so `403` on list and card writes, like `OBSERVER`. To edit, they join the board as `MEMBER`. This keeps board roles as the only source of content permissions besides workspace ADMIN.

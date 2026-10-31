@@ -3,12 +3,14 @@ import { db } from '../../prisma/db';
 import {
   addBoardMemberSchema,
   createBoardSchema,
+  createListSchema,
   updateBoardSchema,
   type BoardMemberRole,
   type WorkspaceRole,
 } from '@taskpulse/shared-types';
-import { canAccessBoard } from './board.access';
+import { canAccessBoard, canEditBoardContent } from './board.access';
 import { isUniqueViolation } from '../../utils/isUniqueViolation';
+import { rankBetween } from '../../shared/rank';
 
 type WorkspaceParams = { workspaceId: string };
 type BoardParams = { boardId: string };
@@ -24,7 +26,14 @@ type BoardRow = {
   createdAt: string;
 };
 
-
+type ListRow = {
+  id: string;
+  boardId : string;
+  name: string;
+  position: string;
+  isArchived: boolean;
+  createdAt: string;
+}
 
 function toBoardResponse(board: BoardRow) {
   return {
@@ -70,6 +79,17 @@ function toBoardMemberResponse(member: BoardMemberRow) {
   };
 }
 
+export function toListResponse(list: ListRow) {
+  return {
+    id: list.id,
+    boardId: list.boardId,
+    name: list.name,
+    position: list.position,
+    isArchived: list.isArchived,
+    createdAt: list.createdAt
+  }
+}
+
 function sendNotFound(res: Response): void {
   res.status(404).json({
     error: {
@@ -94,22 +114,18 @@ type BoardContext = {
   boardRole: BoardMemberRole | null;
 };
 
-// Loads the board plus the current user's roles for it.
-// Returns null (and has already sent a 404) when the board is missing or the user may not see it;
-// 404 rather than 403 so non-members can't learn that the board exists.
-async function loadAccessibleBoard(
-  req: Request<BoardParams>,
-  res: Response,
+// Loads the board plus the user's roles for it, or null when the board is missing
+// or the user may not see it. Sends no response, so routes that reach the board
+// through another resource (e.g. /lists/:listId) can send their own 404.
+export async function findAccessibleBoard(
+  boardId: string,
+  userId: string,
 ): Promise<BoardContext | null> {
-  const board = await db.orm.public.Board.where({ id: req.params.boardId }).first();
+  const board = await db.orm.public.Board.where({ id: boardId }).first();
 
   if (!board) {
-    sendNotFound(res);
     return null;
   }
-
-  // requireAuth guarantees req.user
-  const userId = req.user!.id;
 
   const workspaceMember = await db.orm.public.WorkspaceMember
     .where({ workspaceId: board.workspaceId, userId })
@@ -124,15 +140,29 @@ async function loadAccessibleBoard(
   const boardRole = boardMember?.role ?? null;
 
   if (!canAccessBoard({ workspaceRole, boardRole }, board)) {
-    sendNotFound(res);
     return null;
   }
 
   return { board, workspaceRole, boardRole };
 }
 
+// Same as findAccessibleBoard for /boards/:boardId routes, but sends the 404 itself.
+// 404 rather than 403 so non-members can't learn that the board exists.
+export async function loadAccessibleBoard(
+  req: Request<BoardParams>,
+  res: Response,
+): Promise<BoardContext | null> {
+  // requireAuth guarantees req.user
+  const ctx = await findAccessibleBoard(req.params.boardId, req.user!.id);
+
+  if (!ctx) {
+    sendNotFound(res);
+  }
+  return ctx;
+}
+
 // Board admins manage their board; workspace admins can manage every board in the workspace.
-function isBoardAdmin({ workspaceRole, boardRole }: BoardContext): boolean {
+export function isBoardAdmin({ workspaceRole, boardRole }: BoardContext): boolean {
   return boardRole === 'ADMIN' || workspaceRole === 'ADMIN';
 }
 
@@ -593,6 +623,105 @@ export async function removeBoardMember(
       .delete();
     
     res.status(204).end()
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function listLists(
+  req: Request<BoardParams>,
+  res: Response,
+  next: NextFunction
+) : Promise<void> {
+  try {
+    const ctx = await loadAccessibleBoard(req, res);
+    if(!ctx) {
+      return;
+    }
+    // Sorted by rank; id breaks ties if two lists ever get the same position.
+    const lists = await db.orm.public.List.where({
+      boardId: ctx.board.id,
+      isArchived: false
+    }).orderBy([
+      (l) => l.position.asc(),
+      (l) => l.id.asc()
+    ]).all()
+
+    res.status(200).json({
+      data: {
+        lists: lists.map(toListResponse)
+      }
+    })
+  }catch(error) {
+    next(error);
+  }
+}
+
+export async function createList(
+  req: Request<BoardParams>,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const ctx = await loadAccessibleBoard(req, res);
+
+    if(!ctx) {
+      return;
+    }
+
+    if(!canEditBoardContent(ctx)) {
+      sendForbidden(res);
+      return;
+    }
+
+    const parsed = createListSchema.safeParse(req.body);
+
+    if(!parsed.success) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid list data.',
+          details: parsed.error.flatten(),
+        },
+      });
+      return;
+    }
+
+    const appendList = () => db.transaction(async (tx) => {
+      // Archived lists count too, so un-archiving one can't land on the same rank.
+      const last = await tx.orm.public.List
+        .where({ boardId: ctx.board.id })
+        .orderBy((l) => l.position.desc())
+        .select('position')
+        .first();
+
+      return tx.orm.public.List.create({
+        name: parsed.data.name,
+        boardId: ctx.board.id,
+        position: rankBetween(last?.position ?? null, null),
+        isArchived: false,
+      });
+    });
+
+    // Two concurrent creates can read the same last rank. The unique
+    // (boardId, position) constraint rejects the second one, which then retries
+    // and reads the new last rank.
+    const MAX_ATTEMPTS = 5;
+    let list;
+    for (let attempt = 1; ; attempt++) {
+      try {
+        list = await appendList();
+        break;
+      } catch (error) {
+        if (!isUniqueViolation(error) || attempt === MAX_ATTEMPTS) throw error;
+      }
+    }
+
+    res.status(201).json({
+      data: {
+        list: toListResponse(list)
+      }
+    });
   } catch (error) {
     next(error);
   }

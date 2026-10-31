@@ -38,5 +38,22 @@ export const updateBoardSchema = z
     { message: 'At least one field must be provided' }
   );
 
+export const createListSchema = z.object({
+  name: z
+    .string({ error: 'Name is required' })
+    .trim()
+    .min(1, 'Name is required')
+    .max(100, 'Name must be at most 100 characters'),
+})
+
+export const updateListSchema = z.object({
+  name: z
+    .string({ error: 'Name is required' })
+    .trim()
+    .min(1, 'Name is required')
+    .max(100, 'Name must be at most 100 characters'), 
+})
 export type CreateBoardInput = z.input<typeof createBoardSchema>;
 export type UpdateBoardInput = z.input<typeof updateBoardSchema>;
+export type CreateListInput = z.input<typeof createListSchema>;
+export type UpdateListInput = z.input<typeof updateListSchema>;

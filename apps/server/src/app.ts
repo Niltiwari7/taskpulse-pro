@@ -5,6 +5,7 @@ import authRouter from './modules/auth/auth.routes'
 import workspaceRouter from './modules/workspace/workspace.routes'
 import path from 'node:path'
 import boardRouter from './modules/board/board.route';
+import listRouter from './modules/list/list.route';
 const app = express();
 
 // Render terminates TLS at its proxy
@@ -26,6 +27,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/workspaces', workspaceRouter);
 app.use('/api/v1/boards', boardRouter);
+app.use('/api/v1/lists', listRouter)
 
 
 app.get('/api/v1/health', (_req,res) => {

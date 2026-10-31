@@ -134,7 +134,7 @@ model List {
 
   board Board @relation(fields: [boardId], references: [id])
   cards Card[]
-  @@index([boardId, position])
+  @@unique([boardId, position])
 }
 
 model Card {

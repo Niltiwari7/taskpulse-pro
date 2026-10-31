@@ -26,6 +26,16 @@ export function canAccessBoard(user: BoardAccessUser | null, board: BoardAccessB
   if (board.visibility === 'WORKSPACE') {
     return user.workspaceRole !== null;
   }
-  // PRIVATE: workspace admins can see it so they can manage it 
+  // PRIVATE: workspace admins can see it so they can manage it
   return user.workspaceRole === 'ADMIN';
+}
+
+// Create / edit / move / archive lists and cards. Call only after canAccessBoard
+// passed, so a "no" here means 403, not 404. See "List routes" in docs/permissions.md.
+// A workspace MEMBER who isn't on the board can read it but not edit it.
+export function canEditBoardContent({ workspaceRole, boardRole }: BoardAccessUser): boolean {
+  if (workspaceRole === 'ADMIN') {
+    return true;
+  }
+  return boardRole === 'ADMIN' || boardRole === 'MEMBER' || boardRole === 'GUEST';
 }

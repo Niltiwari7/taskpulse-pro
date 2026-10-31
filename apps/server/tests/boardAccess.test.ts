@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canAccessBoard, type BoardAccessUser } from '../src/modules/board/board.access';
+import { canAccessBoard, canEditBoardContent, type BoardAccessUser } from '../src/modules/board/board.access';
 
 // `satisfies` keeps the exact keys, so a label in `table` that doesn't match a key here is a type error.
 const users = {
@@ -33,5 +33,23 @@ describe('canAccessBoard', () => {
     ] as const)('%s board → %s', (visibility, expected) => {
       expect(canAccessBoard(users[who],{ visibility })).toBe(expected);
     });
+  });
+});
+
+// Mirrors the "List routes" actors in docs/permissions.md: only roles that can see the board.
+//  workspace role  board role   can edit
+const editTable = [
+  [null,     'GUEST',    true],
+  ['MEMBER', null,       false], // ws MEMBER not on the board: reads only
+  ['ADMIN',  null,       true],
+  ['MEMBER', 'ADMIN',    true],
+  ['MEMBER', 'MEMBER',   true],
+  ['MEMBER', 'OBSERVER', false],
+  ['ADMIN',  'OBSERVER', true],  // workspace ADMIN wins over a lower board role
+] as const;
+
+describe('canEditBoardContent', () => {
+  it.each(editTable)('workspace %s + board %s → %s', (workspaceRole, boardRole, expected) => {
+    expect(canEditBoardContent({ workspaceRole, boardRole })).toBe(expected);
   });
 });

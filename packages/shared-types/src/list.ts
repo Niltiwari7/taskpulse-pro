@@ -1,8 +1,8 @@
-export interface list {
+export interface List {
   id : string,
   boardId : string,
   name: string,
-  position: number,
+  position: string,
   isArchived: boolean,
   createdAt: string,
 }

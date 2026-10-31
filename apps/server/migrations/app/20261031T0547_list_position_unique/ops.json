@@ -1,0 +1,83 @@
+[
+  {
+    "id": "dropIndex.List.List_boardId_position_idx_5df470fd",
+    "label": "Drop index \"List_boardId_position_idx_5df470fd\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "List_boardId_position_idx_5df470fd",
+        "table": "List"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"List_boardId_position_idx_5df470fd\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"List_boardId_position_idx_5df470fd\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop index \"List_boardId_position_idx_5df470fd\"",
+        "sql": "DROP INDEX \"public\".\"List_boardId_position_idx_5df470fd\"",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"List_boardId_position_idx_5df470fd\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"List_boardId_position_idx_5df470fd\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.List.List_boardId_position_key",
+    "label": "Add unique constraint on \"List\" (boardId, position)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "List_boardId_position_key",
+        "table": "List"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"List_boardId_position_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "List_boardId_position_key",
+          "public",
+          "\"public\".\"List\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"List_boardId_position_key\"",
+        "sql": "ALTER TABLE \"public\".\"List\" ADD CONSTRAINT \"List_boardId_position_key\" UNIQUE (\"boardId\", \"position\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"List_boardId_position_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "List_boardId_position_key",
+          "public",
+          "\"public\".\"List\""
+        ]
+      }
+    ]
+  }
+]
