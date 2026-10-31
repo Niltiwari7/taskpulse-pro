@@ -1,6 +1,8 @@
 
-const DIGITS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-const BASE = DIGITS.length; // 62 possible digits
+// Lowercase only: Postgres sorts text by the database collation (en_US here),
+// which matches byte order for [0-9a-z] but not once case is mixed.
+const DIGITS = "0123456789abcdefghijklmnopqrstuvwxyz";
+const BASE = DIGITS.length; // 36 possible digits
 
 function digit(ch: string): number {
   const value = DIGITS.indexOf(ch);
@@ -32,7 +34,7 @@ export function rankBetween(
   let result = "";
 
   for (let i = 0; ; i++) {
-    // Missing lower digits are 0; missing upper digits are 62.
+    // Missing lower digits are 0; missing upper digits are BASE.
     const da = i < lo.length ? digit(lo[i]) : 0;
     const db = b !== null && i < b.length ? digit(b[i]) : BASE;
 

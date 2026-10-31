@@ -1,5 +1,6 @@
 import argon2 from 'argon2';
 import { db } from '../prisma/db';
+import { rankBetween } from '../shared/rank';
 
 // Every seeded user can log in with this password (local dev only).
 const SEED_PASSWORD = 'password123';
@@ -95,11 +96,19 @@ async function seedMemberships() {
   });
 }
 
+// Consecutive ranks appended after one another: "i", "r", "v", ...
+function ranks(count: number): string[] {
+  const keys: string[] = [];
+  for (let i = 0; i < count; i++) keys.push(rankBetween(keys.at(-1) ?? null, null));
+  return keys;
+}
+
 async function seedLists() {
+  const [todo, inProgress, done] = ranks(3);
   const lists = [
-    { id: 'seed-list-todo', name: 'To Do', position: 1, boardId: 'seed-board-1', isArchived: false },
-    { id: 'seed-list-inprogress', name: 'In Progress', position: 2, boardId: 'seed-board-1', isArchived: false },
-    { id: 'seed-list-done', name: 'Done', position: 3, boardId: 'seed-board-1', isArchived: false },
+    { id: 'seed-list-todo', name: 'To Do', position: todo, boardId: 'seed-board-1', isArchived: false },
+    { id: 'seed-list-inprogress', name: 'In Progress', position: inProgress, boardId: 'seed-board-1', isArchived: false },
+    { id: 'seed-list-done', name: 'Done', position: done, boardId: 'seed-board-1', isArchived: false },
   ];
 
   for (const list of lists) {
@@ -109,13 +118,14 @@ async function seedLists() {
 }
 
 async function seedCards() {
+  const [first, second] = ranks(2);
   const cards = [
     {
       id: 'seed-card-1',
       title: 'Implement User Authentication',
       description: 'Implement user authentication using JWT and OAuth2.',
       listId: 'seed-list-todo',
-      position: 1,
+      position: first,
       isDueComplete: false,
       isArchived: false,
     },
@@ -124,7 +134,7 @@ async function seedCards() {
       title: 'Design Database Schema',
       description: 'Design the database schema for the application.',
       listId: 'seed-list-todo',
-      position: 2,
+      position: second,
       isDueComplete: false,
       isArchived: false,
     },

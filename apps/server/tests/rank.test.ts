@@ -24,4 +24,24 @@ describe("rankBetween", ()=> {
     expect(ranks.size).toBe(1000);
   })
 
+  it("sorts the same by byte order and by en-US collation", ()=> {
+    const ranks: string[] = [];
+    let prev: string | null = null;
+
+    // Mix appends and inserts so keys vary in length and characters.
+    for(let i = 0; i < 500; i++) {
+      const before: string | null = prev;
+      prev = rankBetween(before, null);
+      ranks.push(prev, rankBetween(before, prev));
+    }
+
+    const byBytes = [...ranks].sort();
+    const byCollation = [...ranks].sort(new Intl.Collator("en-US").compare);
+    expect(byCollation).toEqual(byBytes);
+  })
+
+  it("rejects uppercase characters", ()=> {
+    expect(() => rankBetween("A", null)).toThrow("Invalid rank character");
+  })
+
 })

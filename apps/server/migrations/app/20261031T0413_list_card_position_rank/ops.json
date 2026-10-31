@@ -1,0 +1,197 @@
+[
+  {
+    "id": "alterType.Card.position",
+    "label": "Alter type of \"Card\".\"position\" to text",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "position",
+        "table": "Card"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"position\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Card",
+          "position"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "alter type of \"position\"",
+        "sql": "ALTER TABLE \"public\".\"Card\" ALTER COLUMN \"position\" TYPE text USING \"position\"::text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"position\" has type \"text\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "Card",
+          "position",
+          "text"
+        ]
+      }
+    ],
+    "meta": {
+      "warning": "TABLE_REWRITE"
+    }
+  },
+  {
+    "id": "backfillRank.Card.position",
+    "label": "Backfill rank keys into \"position\" on \"Card\"",
+    "operationClass": "data",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "position",
+        "table": "Card"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure no \"listId\" has more than 630 rows",
+        "sql": "SELECT NOT EXISTS (SELECT 1 FROM \"public\".\"Card\" GROUP BY \"listId\" HAVING count(*) > 630) AS \"result\""
+      }
+    ],
+    "execute": [
+      {
+        "description": "rewrite \"position\" as rank keys ordered by the old numeric position",
+        "sql": "UPDATE \"public\".\"Card\" AS t SET \"position\" = substr('0123456789abcdefghijklmnopqrstuvwxyz', 19 + (r.i / 35)::int, 1) || substr('0123456789abcdefghijklmnopqrstuvwxyz', 2 + (r.i % 35)::int, 1) FROM (SELECT \"id\", row_number() OVER (PARTITION BY \"listId\" ORDER BY \"position\"::float8, \"id\") - 1 AS i FROM \"public\".\"Card\") AS r WHERE t.\"id\" = r.\"id\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify every \"position\" is a rank key",
+        "sql": "SELECT NOT EXISTS (SELECT 1 FROM \"public\".\"Card\" WHERE \"position\" !~ '^[i-z][1-9a-z]$') AS \"result\""
+      }
+    ]
+  },
+  {
+    "id": "alterType.List.position",
+    "label": "Alter type of \"List\".\"position\" to text",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "position",
+        "table": "List"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"position\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "List",
+          "position"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "alter type of \"position\"",
+        "sql": "ALTER TABLE \"public\".\"List\" ALTER COLUMN \"position\" TYPE text USING \"position\"::text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"position\" has type \"text\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": [
+          "public",
+          "List",
+          "position",
+          "text"
+        ]
+      }
+    ],
+    "meta": {
+      "warning": "TABLE_REWRITE"
+    }
+  },
+  {
+    "id": "backfillRank.List.position",
+    "label": "Backfill rank keys into \"position\" on \"List\"",
+    "operationClass": "data",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "position",
+        "table": "List"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure no \"boardId\" has more than 630 rows",
+        "sql": "SELECT NOT EXISTS (SELECT 1 FROM \"public\".\"List\" GROUP BY \"boardId\" HAVING count(*) > 630) AS \"result\""
+      }
+    ],
+    "execute": [
+      {
+        "description": "rewrite \"position\" as rank keys ordered by the old numeric position",
+        "sql": "UPDATE \"public\".\"List\" AS t SET \"position\" = substr('0123456789abcdefghijklmnopqrstuvwxyz', 19 + (r.i / 35)::int, 1) || substr('0123456789abcdefghijklmnopqrstuvwxyz', 2 + (r.i % 35)::int, 1) FROM (SELECT \"id\", row_number() OVER (PARTITION BY \"boardId\" ORDER BY \"position\"::float8, \"id\") - 1 AS i FROM \"public\".\"List\") AS r WHERE t.\"id\" = r.\"id\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify every \"position\" is a rank key",
+        "sql": "SELECT NOT EXISTS (SELECT 1 FROM \"public\".\"List\" WHERE \"position\" !~ '^[i-z][1-9a-z]$') AS \"result\""
+      }
+    ]
+  },
+  {
+    "id": "index.List.List_boardId_position_idx_5df470fd",
+    "label": "Create index \"List_boardId_position_idx_5df470fd\" on \"List\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "List_boardId_position_idx_5df470fd",
+        "table": "List"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"List_boardId_position_idx_5df470fd\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"List_boardId_position_idx_5df470fd\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"List_boardId_position_idx_5df470fd\"",
+        "sql": "CREATE INDEX \"List_boardId_position_idx_5df470fd\" ON \"public\".\"List\" (\"boardId\", \"position\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"List_boardId_position_idx_5df470fd\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"List_boardId_position_idx_5df470fd\""
+        ]
+      }
+    ]
+  }
+]
