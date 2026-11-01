@@ -161,6 +161,21 @@ export async function loadAccessibleBoard(
   return ctx;
 }
 
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+// Deletes the lists and cards of these boards, children first. Call inside the
+// transaction that deletes the boards. Card relations (comments, labels, ...)
+// must be added here once those features exist.
+export async function deleteBoardContent(tx: Tx, boardIds: string[]): Promise<void> {
+  const lists = await tx.orm.public.List.where((l) => l.boardId.in(boardIds)).select('id').all();
+  const listIds = lists.map((l) => l.id);
+
+  if (listIds.length > 0) {
+    await tx.orm.public.Card.where((c) => c.listId.in(listIds)).deleteAll();
+    await tx.orm.public.List.where((l) => l.id.in(listIds)).deleteAll();
+  }
+}
+
 // Board admins manage their board; workspace admins can manage every board in the workspace.
 export function isBoardAdmin({ workspaceRole, boardRole }: BoardContext): boolean {
   return boardRole === 'ADMIN' || workspaceRole === 'ADMIN';
@@ -418,6 +433,7 @@ export async function deleteBoard(
 
     // Members reference the board, so they go first.
     await db.transaction(async (tx) => {
+      await deleteBoardContent(tx, [boardId]);
       await tx.orm.public.BoardMember.where({ boardId }).deleteAll();
       await tx.orm.public.Board.where({ id: boardId }).delete();
     });

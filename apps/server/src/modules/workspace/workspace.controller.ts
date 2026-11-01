@@ -7,6 +7,7 @@ import {
   updateMemberRoleSchema
 } from '@taskpulse/shared-types';
 import { isUniqueViolation } from '../../utils/isUniqueViolation';
+import { deleteBoardContent } from '../board/board.controller';
 
 type WorkspaceParams = { workspaceId: string };
 type WorkspaceMemberParams = { workspaceId: string; userId: string };
@@ -230,12 +231,13 @@ export async function deleteWorkspace(
   try {
     const workspaceId = req.params.workspaceId;
 
-    // Children before parents: board members -> boards -> workspace members -> workspace.
+    // Children before parents: cards -> lists -> board members -> boards -> workspace members -> workspace.
     await db.transaction(async (tx) => {
       const boards = await tx.orm.public.Board.where({ workspaceId }).select('id').all();
       const boardIds = boards.map((b) => b.id);
 
       if (boardIds.length > 0) {
+        await deleteBoardContent(tx, boardIds);
         await tx.orm.public.BoardMember.where((m) => m.boardId.in(boardIds)).deleteAll();
         await tx.orm.public.Board.where({ workspaceId }).deleteAll();
       }

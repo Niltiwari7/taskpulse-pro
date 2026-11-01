@@ -95,3 +95,36 @@ export async function updateList(
     next(error);
   }
 }
+
+/**
+ * @route DELETE /lists/:listId
+ * @description archive a list (soft delete); its cards are left untouched
+ * @access canEditBoardContent
+ */
+export async function archiveList(
+  req: Request<ListParams>,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const list = await loadEditableList(req, res);
+    if (!list) return;
+
+    // Already archived: nothing to write, still 204 (idempotent, like board archive).
+    if (!list.isArchived) {
+      const archived = await db.orm.public.List
+        .where({ id: list.id })
+        .update({ isArchived: true });
+
+      // Deleted between the load and the update.
+      if (!archived) {
+        sendListNotFound(res);
+        return;
+      }
+    }
+
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+}

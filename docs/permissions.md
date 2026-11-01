@@ -81,7 +81,7 @@ All routes are under `/api/v1` and require login. `ws ADMIN` and `ws MEMBER` mea
 Extra rules:
 
 - Demoting or removing the **last** workspace ADMIN → `409 LAST_ADMIN`.
-- Deleting a workspace also deletes its boards and all workspace and board memberships, in one transaction.
+- Deleting a workspace also deletes its boards, their lists and cards, and all workspace and board memberships, in one transaction. Deleting a board does the same for that board's lists, cards and memberships.
 
 ---
 
@@ -175,10 +175,10 @@ Same actors as [§5](#5-board-routes-role--route-matrix). Expected status on a `
 | `GET /boards/:id/lists` | 401 | 404 | 200 | 200 | 200 | 200 | 200 | 200 |
 | `POST /boards/:id/lists` | 401 | 404 | 403 ¹ | 201 | 201 | 201 | 403 | 201 |
 | `PATCH /lists/:listId` (rename) ³ | 401 | 404 | 403 ¹ | 200 | 200 | 200 | 403 | 200 |
-| `DELETE /boards/:id/lists/:listId` ² | 401 | 404 | 403 ¹ | 204 | 204 | 204 | 403 | 204 |
+| `DELETE /lists/:listId` ² ³ | 401 | 404 | 403 ¹ | 204 | 204 | 204 | 403 | 204 |
 
 ¹ A ws MEMBER who isn't on the board can see it but not change it. See [Open decisions](#7-open-decisions), item 4.
-² "Delete" **archives** the list (`isArchived = true`). The row and its cards are kept. A `:listId` that isn't on board `:id` → `404`.
+² "Delete" **archives** the list (`isArchived = true`). The row, its rank and its cards are kept, and it drops out of `GET /boards/:id/lists`. Archiving an already archived list also returns `204`.
 ³ Addressed by list id alone; the server finds the board from the list. A list that doesn't exist and a list on a board the user can't see both get the same `404 LIST_NOT_FOUND`, so list ids can't be probed.
 
 Other visibilities follow the same rule as boards: on `PRIVATE`, a ws MEMBER who isn't on the board gets **404** on every list route. On `PUBLIC`, an outsider gets **200** on `GET` and **403** on the write routes.
