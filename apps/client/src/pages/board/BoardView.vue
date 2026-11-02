@@ -8,19 +8,23 @@
 -->
 <script setup lang="ts">
 import { computed, watch } from "vue";
-import { AlertCircle, ArrowLeft, Columns3 } from "@lucide/vue";
-
+import AddListComposer from "@/components/list/AddListComposer.vue";
+import ListColumn from "@/components/list/ListColumn.vue";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBoardQuery } from "@/composables/useBoards";
+import { useListsQuery } from "@/composables/useLists";
 import { BOARD_VISIBILITY } from "@/lib/board-display";
 import { ApiError } from "@/services/http";
 import { useWorkspaceStore } from "@/stores/workspace";
+import { AlertCircle, ArrowLeft } from "@lucide/vue";
+import { RouterLink } from "vue-router";
 
 const props = defineProps<{ boardId: string }>();
 
 const workspaceStore = useWorkspaceStore();
 const { data: board, isPending, isError, error, refetch, isFetching } = useBoardQuery(() => props.boardId);
+const {data: lists, isPending: listsPending} = useListsQuery(() => props.boardId);
 
 const isNotFound = computed(() => error.value instanceof ApiError && error.value.status === 404);
 const visibility = computed(() => (board.value ? BOARD_VISIBILITY[board.value.visibility] : null));
@@ -74,12 +78,16 @@ watch(
       </Button>
     </div>
 
-    <!-- Lists arrive in W06; until then the canvas is an empty state -->
-    <div v-else class="flex-1 overflow-x-auto p-6">
-      <div class="flex h-full flex-col items-center justify-center rounded-xl border border-dashed text-center">
-        <Columns3 class="size-10 text-muted-foreground" />
-        <p class="mt-4 text-lg font-semibold">No lists yet</p>
-        <p class="mt-1 max-w-sm text-sm text-muted-foreground">Lists and cards for this board are coming soon.</p>
+    <!-- Board canvas: only this area scrolls sideways, the header stays put -->
+    <div v-else class="min-h-0 flex-1 overflow-x-auto">
+      <div class="flex h-full w-max items-start gap-3 p-6">
+       <template v-if="listsPending">
+        <Skeleton v-for="n in 3" :key="n" class="h-32 w-72 shrink-0 rounded-xl"/>
+       </template>
+       <template v-else>
+        <ListColumn v-for="list in lists" :key="list.id" :list="list"/>
+        <AddListComposer :board-id = "boardId"/>
+       </template>
       </div>
     </div>
   </div>
