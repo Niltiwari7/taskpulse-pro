@@ -7,27 +7,40 @@
   so the page shows the same "not found" state for both.
 -->
 <script setup lang="ts">
-import { computed, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import AddListComposer from "@/components/list/AddListComposer.vue";
 import ListColumn from "@/components/list/ListColumn.vue";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBoardQuery } from "@/composables/useBoards";
-import { useListsQuery } from "@/composables/useLists";
+import { useListsQuery, useMoveList } from "@/composables/useLists";
 import { BOARD_VISIBILITY } from "@/lib/board-display";
 import { ApiError } from "@/services/http";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { AlertCircle, ArrowLeft } from "@lucide/vue";
 import { RouterLink } from "vue-router";
+import { VueDraggable } from "vue-draggable-plus";
+import type { List } from "@taskpulse/shared-types";
+import { moveItem } from "@/lib/reorder";
 
 const props = defineProps<{ boardId: string }>();
 
 const workspaceStore = useWorkspaceStore();
 const { data: board, isPending, isError, error, refetch, isFetching } = useBoardQuery(() => props.boardId);
 const {data: lists, isPending: listsPending} = useListsQuery(() => props.boardId);
+const {mutate : moveListMutation} = useMoveList(()=> props.boardId);
+const localLists = ref<List[]>([]);
+
 
 const isNotFound = computed(() => error.value instanceof ApiError && error.value.status === 404);
 const visibility = computed(() => (board.value ? BOARD_VISIBILITY[board.value.visibility] : null));
+
+function onDragEnd(e: { oldIndex?: number; newIndex?: number }) {
+  if (e.oldIndex == null || e.newIndex == null || e.oldIndex === e.newIndex) return;
+  // Compute from the query data, not localLists, which the library may have already reordered.
+  const { items, beforeId, afterId } = moveItem(lists.value!, e.oldIndex, e.newIndex);
+  moveListMutation({ listId: items[e.newIndex].id, beforeId, afterId, optimistic: items });
+}
 
 // Opening a board from a link should also switch the header to its workspace
 watch(
@@ -37,6 +50,8 @@ watch(
   },
   { immediate: true },
 );
+
+watch(lists, (v) => {localLists.value = v ? [...v]:[];},{immediate: true})
 </script>
 
 <template>
@@ -81,13 +96,22 @@ watch(
     <!-- Board canvas: only this area scrolls sideways, the header stays put -->
     <div v-else class="min-h-0 flex-1 overflow-x-auto">
       <div class="flex h-full w-max items-start gap-3 p-6">
-       <template v-if="listsPending">
-        <Skeleton v-for="n in 3" :key="n" class="h-32 w-72 shrink-0 rounded-xl"/>
-       </template>
-       <template v-else>
-        <ListColumn v-for="list in lists" :key="list.id" :list="list"/>
-        <AddListComposer :board-id = "boardId"/>
-       </template>
+        <template v-if="listsPending">
+          <Skeleton v-for="n in 3" :key="n" class="h-32 w-72 shrink-0 rounded-xl" />
+        </template>
+        <template v-else>
+          <VueDraggable
+            v-model="localLists"
+            class="flex items-start gap-3"
+            :animation="150"
+            handle="[data-drag-handle]"
+            ghost-class="opacity-40"
+            @end="onDragEnd"
+          >
+            <ListColumn v-for="list in localLists" :key="list.id" :list="list" />
+          </VueDraggable>
+          <AddListComposer :board-id="boardId" />
+        </template>
       </div>
     </div>
   </div>

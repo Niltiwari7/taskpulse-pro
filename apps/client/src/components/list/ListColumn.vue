@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {nextTick, ref, useTemplateRef} from "vue";
 import {toast} from 'vue-sonner';
-import { MoreHorizontal, Trash2 } from "@lucide/vue";
+import { GripVertical, MoreHorizontal, Trash2 } from "@lucide/vue";
 import {updateListSchema, type List} from "@taskpulse/shared-types";
 
 import DeleteListDialog from "@/components/list/DeleteListDialog.vue";
@@ -63,6 +63,10 @@ async function save() {
   <header
     class = "flex items-center gap-1"
   >
+  <!-- Only this grip starts a drag, so clicking the title still renames -->
+  <span data-drag-handle class="shrink-0 cursor-grab text-muted-foreground active:cursor-grabbing" aria-hidden="true">
+    <GripVertical class="size-4" />
+  </span>
   <Input
     v-if="isEditing"
     ref="titleInput"

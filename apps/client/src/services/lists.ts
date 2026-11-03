@@ -6,7 +6,7 @@
  */
 
 
-import type {CreateListInput, List, UpdateListInput} from "@taskpulse/shared-types";
+import type {CreateListInput, List, UpdateListInput, MoveListInput} from "@taskpulse/shared-types";
 
 import { http } from "@/services/http";
 
@@ -46,4 +46,12 @@ export async function deleteList(listId: string): Promise<void> {
   await http<void>(listPath(listId), {
     method: "DELETE",
   });
+}
+
+export async function moveList(listId: string, input:MoveListInput) {
+  const response = await http<ListResponse>(`${listPath(listId)}/move`, {
+    method: "PATCH",
+    body: input,
+  });
+  return response.data.list;
 }

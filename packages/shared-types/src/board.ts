@@ -53,7 +53,23 @@ export const updateListSchema = z.object({
     .min(1, 'Name is required')
     .max(100, 'Name must be at most 100 characters'), 
 })
+
+// beforeId: the list that ends up immediately left of the moved one (null = first)
+// afterId: the list immediately right of it (null = last)
+export const moveListSchema = z.object({
+  beforeId: z.string().min(1).nullable(),
+  afterId: z.string().min(1).nullable(),
+})
+.strict()
+.refine((id) => id.beforeId !== null || id.afterId !== null, {
+  message: 'beforeId or afterId is required'})
+.refine((id) => id.beforeId === null || id.beforeId !== id.afterId, {
+  message: 'beforeId and afterId must differ'
+  });
+
+
 export type CreateBoardInput = z.input<typeof createBoardSchema>;
 export type UpdateBoardInput = z.input<typeof updateBoardSchema>;
 export type CreateListInput = z.input<typeof createListSchema>;
 export type UpdateListInput = z.input<typeof updateListSchema>;
+export type MoveListInput = z.input<typeof moveListSchema>;
