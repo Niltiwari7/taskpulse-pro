@@ -27,7 +27,7 @@ const props = defineProps<{ boardId: string }>();
 
 const workspaceStore = useWorkspaceStore();
 const { data: board, isPending, isError, error, refetch, isFetching } = useBoardQuery(() => props.boardId);
-const {data: lists, isPending: listsPending} = useListsQuery(() => props.boardId);
+const {data: lists, isPending: listsPending, isError: listsIsError, error: listsError, refetch: refetchLists, isFetching:listsFetching} = useListsQuery(() => props.boardId);
 const {mutate : moveListMutation} = useMoveList(()=> props.boardId);
 const localLists = ref<List[]>([]);
 
@@ -71,12 +71,12 @@ watch(lists, (v) => {localLists.value = v ? [...v]:[];},{immediate: true})
       </template>
     </header>
 
-    <div v-if="isPending" class="flex-1 p-6">
+    <template v-if="listsPending">
       <Skeleton class="h-64 w-72 rounded-xl" />
-    </div>
+    </template>
 
     <div
-      v-else-if="isError"
+      v-else-if="listsIsError"
       role="alert"
       class="m-6 flex flex-col items-center rounded-xl border border-destructive/40 bg-destructive/5 px-6 py-12 text-center"
     >
@@ -89,17 +89,27 @@ watch(lists, (v) => {localLists.value = v ? [...v]:[];},{immediate: true})
         <RouterLink :to="{ name: 'dashboard' }">Back to dashboard</RouterLink>
       </Button>
       <Button v-else variant="outline" class="mt-4" :disabled="isFetching" @click="refetch()">
-        {{ isFetching ? "Retrying..." : "Try again" }}
+        {{ listsFetching  ? "Retrying..." : "Try again" }}
       </Button>
     </div>
 
     <!-- Board canvas: only this area scrolls sideways, the header stays put -->
-    <div v-else class="min-h-0 flex-1 overflow-x-auto">
+    <template v-else>
       <div class="flex h-full w-max items-start gap-3 p-6">
         <template v-if="listsPending">
           <Skeleton v-for="n in 3" :key="n" class="h-32 w-72 shrink-0 rounded-xl" />
         </template>
         <template v-else>
+          <div
+            v-if="localLists.length === 0"
+            class="flex w-72 shrink-0 flex-col justify-center rounded-xl border border-dashed px-4 py-8 text-center"
+          >
+            <p class="text-sm font-medium">This board has no lists yet</p>
+            <p class="mt-1 text-xs text-muted-foreground">
+              Add one to get started, e.g. Todo, Doing, Done.
+            </p>
+          </div>
+
           <VueDraggable
             v-model="localLists"
             class="flex items-start gap-3"
@@ -113,6 +123,6 @@ watch(lists, (v) => {localLists.value = v ? [...v]:[];},{immediate: true})
           <AddListComposer :board-id="boardId" />
         </template>
       </div>
-    </div>
+    </template>
   </div>
 </template>

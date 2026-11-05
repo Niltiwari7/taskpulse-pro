@@ -107,6 +107,11 @@ async function insertCard(listId: string) {
   });
 }
 
+function moveList(agent:Agent, listId:string, body:{beforeId:string|null; afterId: string | null}) {
+  return agent.patch(`${listsUrl}/${listId}/move`).send(body);
+}
+
+
 // An admin who owns a workspace with one WORKSPACE-visible board (as board ADMIN).
 async function setupBoard() {
   const admin = await loginAsNewUser();
@@ -114,6 +119,14 @@ async function setupBoard() {
   const board = await createBoard(admin.agent, workspace.id, { visibility: 'WORKSPACE' });
   return { admin, workspace, board };
 }
+  // Board with Todo, Doing, Done in that order.
+  async function setupThreeLists() {
+    const ctx = await setupBoard();
+    const todo = await createList(ctx.admin.agent,ctx.board.id, {name: 'Todo'});
+    const doing = await createList(ctx.admin.agent, ctx.board.id, {name: 'Doing'});
+    const done = await createList(ctx.admin.agent, ctx.board.id, {name : 'Done'});
+    return {...ctx, todo, doing, done};
+  }
 
 afterEach(async () => {
   if (createdEmails.size === 0) return;
@@ -301,6 +314,51 @@ describe('permissions', () => {
 
     await createList(wsAdmin.agent, board.id, { name: 'Todo' });
   });
+
+  it('a logged-out request gets 401', async () => {
+    const { admin, board } = await setupBoard();
+
+    const res = await request(app).post(`${boardsUrl}/${board.id}/lists`).send({ name: 'Todo' });
+
+    expect(res.status).toBe(401);
+    expect(await getListNames(admin.agent, board.id)).toEqual([]);
+  });
+
+  it('a ws MEMBER who is not on a PRIVATE board gets 404', async () => {
+    const admin = await loginAsNewUser();
+    const workspace = await createWorkspace(admin.agent);
+    const board = await createBoard(admin.agent, workspace.id, { visibility: 'PRIVATE' });
+    const member = await loginAsNewUser();
+    await addWorkspaceMember(admin.agent, workspace.id, member.email, 'MEMBER');
+
+    const res = await member.agent.post(`${boardsUrl}/${board.id}/lists`).send({ name: 'Todo' });
+
+    expect(res.status).toBe(404);
+    expect(await getListNames(admin.agent, board.id)).toEqual([]);
+  });
+
+  it('an outsider gets 403 on a PUBLIC board', async () => {
+    const admin = await loginAsNewUser();
+    const workspace = await createWorkspace(admin.agent);
+    const board = await createBoard(admin.agent, workspace.id, { visibility: 'PUBLIC' });
+    const outsider = await loginAsNewUser();
+
+    const res = await outsider.agent.post(`${boardsUrl}/${board.id}/lists`).send({ name: 'Todo' });
+
+    expect(res.status).toBe(403);
+    expect(await getListNames(admin.agent, board.id)).toEqual([]);
+  });
+
+  // The permission check runs before body validation, so an invalid body must not reveal the board.
+  it('an outsider with an invalid body gets 404, not 400', async () => {
+    const { admin, board } = await setupBoard();
+    const outsider = await loginAsNewUser();
+
+    const res = await outsider.agent.post(`${boardsUrl}/${board.id}/lists`).send({ name: '' });
+
+    expect(res.status).toBe(404);
+    expect(await getListNames(admin.agent, board.id)).toEqual([]);
+  });
 });
 
 describe('deleting a parent that has lists', () => {
@@ -328,5 +386,107 @@ describe('deleting a parent that has lists', () => {
     expect(await db.orm.public.Board.where({ id: board.id }).first()).toBeNull();
     expect(await db.orm.public.List.where({ boardId: board.id }).first()).toBeNull();
     expect(await db.orm.public.Card.where({ listId: list.id }).first()).toBeNull();
+  });
+});
+
+describe('PATCH /lists/:listId/move', () => {
+  it('moves a list to the start', async () => {
+    const { admin, board, todo, done } = await setupThreeLists();
+
+    const res = await moveList(admin.agent, done.id, { beforeId: null, afterId: todo.id });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.list.position < todo.position).toBe(true);
+    // A fresh GET proves the order is stored, not just returned.
+    expect(await getListNames(admin.agent, board.id)).toEqual(['Done', 'Todo', 'Doing']);
+  });
+
+  it('move a list to the end', async()=> {
+    const {admin,board, todo,done } = await setupThreeLists();
+    const res = await moveList(admin.agent, todo.id, {beforeId: done.id, afterId: null});
+    expect (res.status).toBe(200);
+    expect(res.body.data.list.position > done.position).toBe(true);
+    expect(await getListNames(admin.agent, board.id)).toEqual(['Doing', 'Done', 'Todo']);
+  })
+
+  it('moves a list between two others', async () => {
+    const {admin, board, todo, doing, done } = await setupThreeLists();
+    const res = await moveList(admin.agent, done.id, { beforeId: todo.id, afterId: doing.id });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.list.position > todo.position).toBe(true);
+    expect(res.body.data.list.position < doing.position).toBe(true);
+    expect(await getListNames(admin.agent, board.id)).toEqual(['Todo', 'Done', 'Doing']);
+  });
+  
+  it('many moves a the same spot', async() => {
+    const {admin, board, todo, doing, done } = await setupThreeLists(); 
+    for(let i = 0; i < 20; i++) {
+      const res = await moveList(admin.agent, done.id, {beforeId: todo.id, afterId: doing.id});
+      expect(res.status).toBe(200);
+      expect(res.body.data.list.position > todo.position).toBe(true);
+      expect(res.body.data.list.position < doing.position).toBe(true);
+      expect(await getListNames(admin.agent, board.id)).toEqual(['Todo', 'Done', 'Doing']);
+    }
+  })
+
+  it('both null', async() => {
+    const {admin, todo } = await setupThreeLists();
+    const res = await moveList(admin.agent, todo.id, {beforeId: null, afterId: null});
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  })
+  
+  it('Anchor is from other board', async() => {
+    const {admin, workspace, todo } = await setupThreeLists();
+    const otherBoard = await createBoard(admin.agent, workspace.id);
+    const otherList = await createList(admin.agent, otherBoard.id);
+    const res = await moveList(admin.agent, todo.id, {beforeId: otherList.id, afterId: null});
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('INVALID_ANCHOR');
+  })
+  
+  it('Anchor is in reverse order', async() => {
+    const {admin, board, todo, doing, done } = await setupThreeLists();
+    const res = await moveList(admin.agent, doing.id, {beforeId: done.id, afterId: todo.id});
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('INVALID_ANCHOR');
+  })
+
+  it('Archived anchor', async() => {
+    const {admin, board, todo, doing, done } = await setupThreeLists();
+    await admin.agent.delete(`${listsUrl}/${doing.id}`);
+    const res = await moveList(admin.agent, done.id, {beforeId: doing.id, afterId: null});
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('INVALID_ANCHOR');
+  })
+
+  it('Make anchor self', async() => {
+    const {admin, board, todo, doing, done } = await setupThreeLists();
+    const res = await moveList(admin.agent, done.id, {beforeId: done.id, afterId: null});
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('INVALID_ANCHOR');
+  })
+
+  it('OBSERVER cannot move a list (403)', async () => {
+    const { admin, workspace, board, todo, done } = await setupThreeLists();
+    const observer = await loginAsNewUser();
+    await addWorkspaceMember(admin.agent, workspace.id, observer.email, 'MEMBER');
+    await addBoardMember(admin.agent, board.id, observer.email, 'OBSERVER');
+
+    const res = await moveList(observer.agent, todo.id, { beforeId: done.id, afterId: null });
+
+    expect(res.status).toBe(403);
+    expect(await getListNames(admin.agent, board.id)).toEqual(['Todo', 'Doing', 'Done']);
+  });
+
+  it('an outsider gets 404 when moving a list on a WORKSPACE board', async () => {
+    const { admin, board, todo, done } = await setupThreeLists();
+    const outsider = await loginAsNewUser();
+
+    const res = await moveList(outsider.agent, todo.id, { beforeId: done.id, afterId: null });
+
+    expect(res.status).toBe(404);
+    expect(await getListNames(admin.agent, board.id)).toEqual(['Todo', 'Doing', 'Done']);
   });
 });
