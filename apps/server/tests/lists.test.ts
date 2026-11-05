@@ -447,14 +447,14 @@ describe('PATCH /lists/:listId/move', () => {
   })
   
   it('Anchor is in reverse order', async() => {
-    const {admin, board, todo, doing, done } = await setupThreeLists();
+    const {admin,todo, doing, done } = await setupThreeLists();
     const res = await moveList(admin.agent, doing.id, {beforeId: done.id, afterId: todo.id});
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('INVALID_ANCHOR');
   })
 
   it('Archived anchor', async() => {
-    const {admin, board, todo, doing, done } = await setupThreeLists();
+    const {admin, doing, done } = await setupThreeLists();
     await admin.agent.delete(`${listsUrl}/${doing.id}`);
     const res = await moveList(admin.agent, done.id, {beforeId: doing.id, afterId: null});
     expect(res.status).toBe(400);
@@ -462,7 +462,7 @@ describe('PATCH /lists/:listId/move', () => {
   })
 
   it('Make anchor self', async() => {
-    const {admin, board, todo, doing, done } = await setupThreeLists();
+    const {admin, done } = await setupThreeLists();
     const res = await moveList(admin.agent, done.id, {beforeId: done.id, afterId: null});
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('INVALID_ANCHOR');
