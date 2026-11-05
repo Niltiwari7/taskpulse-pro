@@ -26,8 +26,8 @@ import { moveItem } from "@/lib/reorder";
 const props = defineProps<{ boardId: string }>();
 
 const workspaceStore = useWorkspaceStore();
-const { data: board, isPending, isError, error, refetch, isFetching } = useBoardQuery(() => props.boardId);
-const {data: lists, isPending: listsPending, isError: listsIsError, error: listsError, refetch: refetchLists, isFetching:listsFetching} = useListsQuery(() => props.boardId);
+const { data: board, isPending, error, refetch, isFetching } = useBoardQuery(() => props.boardId);
+const {data: lists, isPending: listsPending, isError: listsIsError, isFetching:listsFetching} = useListsQuery(() => props.boardId);
 const {mutate : moveListMutation} = useMoveList(()=> props.boardId);
 const localLists = ref<List[]>([]);
 
