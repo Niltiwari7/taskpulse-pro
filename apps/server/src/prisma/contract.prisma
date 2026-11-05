@@ -160,6 +160,7 @@ model Card {
   customFieldValues CustomFieldValue[]
   votes             CardVote[]
   activities        Activity[]
+  @@unique([listId, position])
 }
 
 model CardMember {

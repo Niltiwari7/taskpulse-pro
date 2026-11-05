@@ -2986,7 +2986,14 @@
                   "id"
                 ]
               },
-              "uniques": []
+              "uniques": [
+                {
+                  "columns": [
+                    "listId",
+                    "position"
+                  ]
+                }
+              ]
             },
             "CardLabel": {
               "columns": {
@@ -4220,7 +4227,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "2e32e02144c68021e4513fe3a6c5cd02ff8f0c800e50b1425317673cd36b71ec"
+    "storageHash": "de639faf921b9159e7364ec1c2e70199e61c2021bd9726bd2894fe9fde40bd16"
   },
   "execution": {
     "executionHash": "d4ef3a3b187c83f27c1a35c56c0647529fbcdecbc84394b8dae05091890bac1a",
