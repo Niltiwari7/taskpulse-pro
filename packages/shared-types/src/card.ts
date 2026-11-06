@@ -5,12 +5,12 @@ export interface Card {
   title: string,
   description: string | null,
   position: string,
-  coverImageUrl?: string,
-  startDate?: string,
-  dueDate?:string,
-  dueDateReminder?:string,
-  isDueDateComplete?: boolean,
-  isArchived?: boolean,
+  coverImageUrl: string | null,
+  startDate: string | null,
+  dueDate: string | null,
+  dueDateReminder: string | null,
+  isDueComplete: boolean,
+  isArchived: boolean,
   createdAt: string
 }
 

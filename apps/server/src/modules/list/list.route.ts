@@ -1,7 +1,7 @@
 import {Router} from 'express';
 import {requireAuth} from '../../middleware/requiredAuth';
 
-import {archiveList, moveList, updateList} from './list.controller';
+import {archiveList, moveList, updateList,createCard} from './list.controller';
 
 const listRouter = Router();
 
@@ -11,5 +11,6 @@ listRouter.use(requireAuth);
 listRouter.patch('/:listId', updateList);
 listRouter.patch('/:listId/move', moveList);
 listRouter.delete('/:listId', archiveList);
+listRouter.post('/:listId/cards', createCard);
 
 export default listRouter;

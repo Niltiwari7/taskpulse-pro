@@ -11,6 +11,7 @@ import {
 import { canAccessBoard, canEditBoardContent } from './board.access';
 import { isUniqueViolation } from '../../utils/isUniqueViolation';
 import { rankBetween } from '../../shared/rank';
+import { retryOnUniqueViolation } from '../../utils/retryOnUniqueViolation';
 
 type WorkspaceParams = { workspaceId: string };
 type BoardParams = { boardId: string };
@@ -722,16 +723,7 @@ export async function createList(
     // Two concurrent creates can read the same last rank. The unique
     // (boardId, position) constraint rejects the second one, which then retries
     // and reads the new last rank.
-    const MAX_ATTEMPTS = 5;
-    let list;
-    for (let attempt = 1; ; attempt++) {
-      try {
-        list = await appendList();
-        break;
-      } catch (error) {
-        if (!isUniqueViolation(error) || attempt === MAX_ATTEMPTS) throw error;
-      }
-    }
+    const list = await retryOnUniqueViolation(appendList);
 
     res.status(201).json({
       data: {

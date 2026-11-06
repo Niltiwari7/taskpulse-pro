@@ -1,9 +1,9 @@
 import type {Request, Response, NextFunction} from 'express';
 import {db} from '../../prisma/db';
-import {updateListSchema, moveListSchema} from '@taskpulse/shared-types';
+import {updateListSchema, moveListSchema, createCardSchema} from '@taskpulse/shared-types';
 import {findAccessibleBoard, toListResponse} from '../board/board.controller';
 import {canEditBoardContent} from '../board/board.access';
-import { isUniqueViolation } from '../../utils/isUniqueViolation';
+import { retryOnUniqueViolation } from '../../utils/retryOnUniqueViolation';
 import { rankBetween } from '../../shared/rank';
 
 
@@ -28,7 +28,37 @@ function sendForbidden(res : Response) : void {
     }
   })
 }
+type CardRow = {
+  id: string;
+  listId: string;
+  title: string;
+  description: string | null;
+  position: string;
+  coverImageUrl: string | null;
+  startDate: string | null;
+  dueDate: string | null;
+  dueDateReminder: string | null;
+  isDueComplete: boolean;
+  isArchived: boolean;
+  createdAt: string;
+};
 
+export function toCardResponse(card: CardRow) {
+  return {
+    id: card.id,
+    listId: card.listId,
+    title: card.title,
+    description: card.description,
+    position: card.position,
+    coverImageUrl: card.coverImageUrl,
+    startDate: card.startDate,
+    dueDate: card.dueDate,
+    dueDateReminder: card.dueDateReminder,
+    isDueComplete: card.isDueComplete,
+    isArchived: card.isArchived,
+    createdAt: card.createdAt,
+  };
+}
 // Loads a list the user may edit. Returns null once a response has been sent:
 // 404 when the list is missing or its board is hidden from the user (the same
 // body for both, so outsiders can't probe list ids), 403 when they can see the
@@ -214,16 +244,7 @@ export async function moveList(
 
     // A concurrent move or create can take the same rank; the unique
     // (boardId, position) constraint rejects one, which retries with fresh neighbors.
-    const MAX_ATTEMPTS = 5;
-    let updated;
-    for (let attempt = 1; ; attempt++) {
-      try {
-        updated = await moveOnce();
-        break;
-      } catch (error) {
-        if (!isUniqueViolation(error) || attempt === MAX_ATTEMPTS) throw error;
-      }
-    }
+    const updated = await retryOnUniqueViolation(moveOnce);
 
     if (updated === 'INVALID_ANCHOR') {
       res.status(400).json({
@@ -242,6 +263,72 @@ export async function moveList(
     }
 
     res.status(200).json({ data: { list: toListResponse(updated) } });
+  } catch (error) {
+    next(error);
+  }
+}
+
+
+/**
+ * @route POST /lists/:listId/cards
+ * @description append a card to the end of a list
+ * @access canEditBoardContent
+ */
+export async function createCard(
+  req: Request<ListParams>,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const list = await loadEditableList(req, res);
+    if (!list) return;
+
+    if (list.isArchived) {
+      res.status(409).json({
+        error: {
+          code: 'LIST_ARCHIVED',
+          message: 'List is archived.',
+        },
+      });
+      return;
+    }
+
+    const parsed = createCardSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid card data.',
+          details: parsed.error.flatten(),
+        },
+      });
+      return;
+    }
+    
+    const appendCard = () => db.transaction(async (tx) => {
+      // Archived cards count too, so un-archiving one can't land on the same rank.
+      const last = await tx.orm.public.Card
+        .where({ listId: list.id })
+        .orderBy((c) => c.position.desc())
+        .select('position')
+        .first();
+
+      return tx.orm.public.Card.create({
+        title: parsed.data.title,
+        listId: list.id,
+        position: rankBetween(last?.position ?? null, null),
+        isArchived: false,
+        isDueComplete: false,
+        description: parsed.data.description ?? null,
+      });
+    });
+
+    // Concurrent creates can read the same last rank; the unique
+    // (listId, position) constraint rejects one, which retries.
+    const card = await retryOnUniqueViolation(appendCard);
+
+    res.status(201).json({ data: { card: toCardResponse(card) } });
   } catch (error) {
     next(error);
   }
