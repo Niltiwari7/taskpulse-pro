@@ -1,6 +1,6 @@
 import type {Request, Response, NextFunction} from 'express'
 import {db} from '../../prisma/db'
-import { archiveBoard, findAccessibleBoard } from '../board/board.controller'
+import { findAccessibleBoard } from '../board/board.controller'
 import { canEditBoardContent } from '../board/board.access'
 import { toCardResponse } from '../list/list.controller'
 import { updateCardSchema } from '@taskpulse/shared-types'
