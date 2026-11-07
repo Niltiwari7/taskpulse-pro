@@ -5,6 +5,7 @@ import {findAccessibleBoard, toListResponse} from '../board/board.controller';
 import {canEditBoardContent} from '../board/board.access';
 import { retryOnUniqueViolation } from '../../utils/retryOnUniqueViolation';
 import { rankBetween } from '../../shared/rank';
+import { toCardResponse } from '../card/card.response';
 
 
 type ListParams = {
@@ -27,37 +28,6 @@ function sendForbidden(res : Response) : void {
       message : 'You do not have permission to do this.'
     }
   })
-}
-type CardRow = {
-  id: string;
-  listId: string;
-  title: string;
-  description: string | null;
-  position: string;
-  coverImageUrl: string | null;
-  startDate: string | null;
-  dueDate: string | null;
-  dueDateReminder: string | null;
-  isDueComplete: boolean;
-  isArchived: boolean;
-  createdAt: string;
-};
-
-export function toCardResponse(card: CardRow) {
-  return {
-    id: card.id,
-    listId: card.listId,
-    title: card.title,
-    description: card.description,
-    position: card.position,
-    coverImageUrl: card.coverImageUrl,
-    startDate: card.startDate,
-    dueDate: card.dueDate,
-    dueDateReminder: card.dueDateReminder,
-    isDueComplete: card.isDueComplete,
-    isArchived: card.isArchived,
-    createdAt: card.createdAt,
-  };
 }
 // Loads a list the user may edit. Returns null once a response has been sent:
 // 404 when the list is missing or its board is hidden from the user (the same

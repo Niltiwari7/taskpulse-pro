@@ -6,9 +6,11 @@ import type { SqlMiddleware } from '@prisma/orm-postgres/family-runtime';
 
 export const queryStats = {count: 0};
 
+// Counts every statement (reads and writes); tests use it to catch N+1 queries.
+// afterQuery is the hook this runtime calls per statement — afterExecute never fires.
 const queryLogger: SqlMiddleware = {
   name: 'query-logger',
-  async afterExecute(plan, result) {
+  async afterQuery(plan, result) {
     queryStats.count++;
 
     if(process.env.LOG_SQL){
@@ -21,3 +23,6 @@ export const db = postgres<Contract>({
   url: process.env['DATABASE_URL']!,
   middleware: [queryLogger],
 });
+
+// The transaction handle passed to db.transaction callbacks.
+export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];

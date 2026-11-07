@@ -2,8 +2,9 @@ import type {Request, Response, NextFunction} from 'express'
 import {db} from '../../prisma/db'
 import { findAccessibleBoard } from '../board/board.controller'
 import { canEditBoardContent } from '../board/board.access'
-import { toCardResponse } from '../list/list.controller'
+import { toCardResponse } from './card.response'
 import { updateCardSchema } from '@taskpulse/shared-types'
+import { deleteCardContent } from './card.content'
 
 type CardParams = {
    cardId: string
@@ -115,44 +116,72 @@ export async function updateCard(
 }
 
 /**
- * @route PATCH /cards/:cardId
+ * @route POST /cards/:cardId/archive
  * @description archive a card (soft delete)
  * @access canEditBoardContent
  */
-
 export async function archiveCard(
   req: Request<CardParams>,
   res: Response,
-  next: NextFunction  
+  next: NextFunction
+): Promise<void> {
+  try {
+    const card = await loadCard(req, res, { edit: true });
+    if (!card) return;
+
+    // Already archived: nothing to write (idempotent).
+    if (card.isArchived) {
+      res.status(200).json({ data: { card: toCardResponse(card) } });
+      return;
+    }
+
+    const archived = await db.orm.public.Card
+      .where({ id: card.id })
+      .update({ isArchived: true });
+
+    // Deleted between the load and the update.
+    if (!archived) {
+      sendCardNotFound(res);
+      return;
+    }
+
+    res.status(200).json({ data: { card: toCardResponse(archived) } });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * @route DELETE /cards/:cardId
+ * @description permanently delete an archived card and its children
+ * @access canEditBoardContent
+ */
+export async function deleteCard(
+  req:Request<CardParams>,
+  res: Response,
+  next: NextFunction
 ): Promise<void> {
   try {
     const card = await loadCard(req,res,{edit:true});
     if(!card) {
       return;
     }
-    
-    if(card.isArchived) {
-      res.status(200).json({
-        data: {card: toCardResponse(card)}
+
+    // Card lifecycle is OPEN -> ARCHIVED -> deleted
+    if(!card.isArchived){
+      res.status(409).json({
+        error: {
+          code:'CARD_NOT_ARCHIVED',
+          message:'Archive the card before deleting it.'
+        }
       })
-    }
-
-    const archiveCard = await db.orm.public.Card.
-    where({id: card.id})
-    .update({isArchived: true})
-
-    if(!archiveCard) {
-      sendCardNotFound(res)
       return;
     }
-    res.status(200).json({
-      data: {card: toCardResponse(card)}
-    });
 
+    await db.transaction((tx) => deleteCardContent(tx, [card.id]));
+
+    res.status(204).end();
   } catch (error) {
-    next(error);
+    next(error)
   }
 }
-
-
-

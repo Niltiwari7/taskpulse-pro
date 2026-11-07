@@ -1,5 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
-import { db } from '../../prisma/db';
+import { db, type Tx } from '../../prisma/db';
+import { deleteCardContent } from '../card/card.content';
+import { toCardResponse } from '../card/card.response';
 import {
   addBoardMemberSchema,
   createBoardSchema,
@@ -162,17 +164,15 @@ export async function loadAccessibleBoard(
   return ctx;
 }
 
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-
 // Deletes the lists and cards of these boards, children first. Call inside the
-// transaction that deletes the boards. Card relations (comments, labels, ...)
-// must be added here once those features exist.
+// transaction that deletes the boards.
 export async function deleteBoardContent(tx: Tx, boardIds: string[]): Promise<void> {
   const lists = await tx.orm.public.List.where((l) => l.boardId.in(boardIds)).select('id').all();
   const listIds = lists.map((l) => l.id);
 
   if (listIds.length > 0) {
-    await tx.orm.public.Card.where((c) => c.listId.in(listIds)).deleteAll();
+    const cards = await tx.orm.public.Card.where((c) => c.listId.in(listIds)).select('id').all();
+    await deleteCardContent(tx, cards.map((c) => c.id));
     await tx.orm.public.List.where((l) => l.id.in(listIds)).deleteAll();
   }
 }
@@ -298,9 +298,33 @@ export async function getBoard(
   try {
     const ctx = await loadAccessibleBoard(req, res);
     if (!ctx) return;
+    // The board with its open lists and their open cards, each in rank order.
+    const tree = await db.orm.public.Board
+      .where({ id: ctx.board.id })
+      .include('lists', (lists) => lists
+        .where({ isArchived: false })
+        .orderBy([(l) => l.position.asc(), (l) => l.id.asc()])
+        .include('cards', (cards) => cards
+          .where({ isArchived: false })
+          .orderBy([(c) => c.position.asc(), (c) => c.id.asc()])))
+      .first();
+
+    // Deleted between the access check and this read.
+    if (!tree) {
+      sendNotFound(res);
+      return;
+    }
 
     res.status(200).json({
-      data: { board: toBoardResponse(ctx.board) },
+      data: {
+        board: {
+          ...toBoardResponse(tree),
+          lists: tree.lists.map((list) => ({
+            ...toListResponse(list),
+            cards: list.cards.map(toCardResponse),
+          })),
+        },
+      },
     });
   } catch (error) {
     next(error);
