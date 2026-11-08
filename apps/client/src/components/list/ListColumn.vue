@@ -2,7 +2,7 @@
 import {nextTick, ref, useTemplateRef} from "vue";
 import {toast} from 'vue-sonner';
 import { GripVertical, MoreHorizontal, Trash2 } from "@lucide/vue";
-import {updateListSchema, type List} from "@taskpulse/shared-types";
+import {updateListSchema, type Card, type List} from "@taskpulse/shared-types";
 
 import DeleteListDialog from "@/components/list/DeleteListDialog.vue";
 import {Button} from "@/components/ui/button";
@@ -15,9 +15,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {Input} from "@/components/ui/input";
 import {useRenameList} from "@/composables/useLists";
+import AddCardComposer from "@/components/card/AddCardComposer.vue";
+import CardTile from "@/components/card/CardTile.vue";
 
 const props = defineProps<{
   list: List;
+  cards: Card[]
 }>();
 
 const isEditing = ref(false);
@@ -101,12 +104,12 @@ async function save() {
   </DropdownMenu>
   </header>
 
-  <div class="mt-2 min-h-12 flex-1 overflow-y-auto">
-    <p class="px-2 py-3 text-xs text-muted-foreground">
-      No cards yet.
-    </p>
-  </div>
-
+  <ol class="mt-2 min-h-2 flex-1 space-y-2 overflow-y-auto px-0.5 py-0.5">
+    <li v-for="card in cards" :key="card.id">
+      <CardTile :card="card" :board-id="list.boardId"/>
+    </li>
+  </ol>
+  <AddCardComposer :list-id="list.id" :board-id="list.boardId"/>
     <!-- Outside the DropdownMenu so closing the menu doesn't tear down the dialog -->
     <DeleteListDialog v-model:open="deleteOpen" :list="list" />
   </section>

@@ -33,3 +33,6 @@ export const updateCardSchema = z.object({
       isDueComplete: z.boolean().optional()
 }).strict()
   .refine((d)=>Object.keys(d).length>0, {message: 'At least one field must be provided'});
+
+export type CreateCardInput = z.infer<typeof createCardSchema>;
+export type UpdateCardInput = z.infer<typeof updateCardSchema>;

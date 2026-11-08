@@ -20,8 +20,9 @@ import { useWorkspaceStore } from "@/stores/workspace";
 import { AlertCircle, ArrowLeft } from "@lucide/vue";
 import { RouterLink } from "vue-router";
 import { VueDraggable } from "vue-draggable-plus";
-import type { List } from "@taskpulse/shared-types";
+import type { Card, List } from "@taskpulse/shared-types";
 import { moveItem } from "@/lib/reorder";
+import { useBoardCards } from "@/composables/useCards";
 
 const props = defineProps<{ boardId: string }>();
 
@@ -29,6 +30,7 @@ const workspaceStore = useWorkspaceStore();
 const { data: board, isPending, error, refetch, isFetching } = useBoardQuery(() => props.boardId);
 const {data: lists, isPending: listsPending, isError: listsIsError, isFetching:listsFetching} = useListsQuery(() => props.boardId);
 const {mutate : moveListMutation} = useMoveList(()=> props.boardId);
+const {data:cards} = useBoardCards(()=>props.boardId);
 const localLists = ref<List[]>([]);
 
 
@@ -42,6 +44,17 @@ function onDragEnd(e: { oldIndex?: number; newIndex?: number }) {
   moveListMutation({ listId: items[e.newIndex].id, beforeId, afterId, optimistic: items });
 }
 
+
+const cardsByList = computed(() => {
+  const map = new Map<string, Card[]>();
+
+  for(const card of cards.value??[]){
+    const bucket = map.get(card.listId);
+    if(bucket)bucket.push(card);
+    else map.set(card.listId,[card]);
+  }
+  return map;
+})
 // Opening a board from a link should also switch the header to its workspace
 watch(
   () => board.value?.workspaceId,
@@ -118,8 +131,9 @@ watch(lists, (v) => {localLists.value = v ? [...v]:[];},{immediate: true})
             ghost-class="opacity-40"
             @end="onDragEnd"
           >
-            <ListColumn v-for="list in localLists" :key="list.id" :list="list" />
+            <ListColumn v-for="list in localLists" :key="list.id" :list="list"  :cards = "cardsByList.get(list.id)??[]"/>
           </VueDraggable>
+          <RouterView/>
           <AddListComposer :board-id="boardId" />
         </template>
       </div>

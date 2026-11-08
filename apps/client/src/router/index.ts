@@ -88,6 +88,15 @@ const router = createRouter({
           name: 'board',
           component: () => import('@/pages/board/BoardView.vue'),
           props: true,
+          children: [
+            {
+              // Deep link to a card: the board stays rendered underneath the modal.
+              path: 'cards/:cardId',
+              name: 'card',
+              component: () => import('@/components/card/CardDetailModal.vue'),
+              props: true, // passes both :boardId and :cardId
+            },
+          ],
         },
         // Future routes added here (W07 cards, etc.)
       ],

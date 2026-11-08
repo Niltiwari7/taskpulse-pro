@@ -12,6 +12,7 @@ import type { CreateBoardInput } from "@taskpulse/shared-types";
 
 import { ApiError } from "@/services/http";
 import { createBoard, fetchBoard, fetchBoards } from "@/services/boards";
+import { cardKeys } from "./useCards";
 
 export const boardKeys = {
   all: ["boards"] as const,
@@ -29,9 +30,16 @@ export function useBoardsQuery(workspaceId: MaybeRefOrGetter<string | null | und
 }
 
 export function useBoardQuery(boardId: MaybeRefOrGetter<string>) {
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: computed(() => boardKeys.detail(toValue(boardId))),
-    queryFn: () => fetchBoard(toValue(boardId)),
+     queryFn: async () => {
+      const id = toValue(boardId);
+      const board = await fetchBoard(id);
+      // One request feeds both caches; cards never get a fetch of their own.
+      queryClient.setQueryData(cardKeys.byBoard(id), board.lists.flatMap((l) => l.cards));
+      return board;
+    },
     // A 404 is a real answer (missing or not yours), retrying won't change it
     retry: (failureCount, error) => !(error instanceof ApiError && error.status === 404) && failureCount < 3,
   });

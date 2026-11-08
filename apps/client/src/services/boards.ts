@@ -4,7 +4,7 @@
  * Creating and listing are workspace-scoped (/workspaces/:id/boards); everything
  * else is addressed by board id (/boards/:id).
  */
-import type { Board, CreateBoardInput } from "@taskpulse/shared-types";
+import type { Board, BoardDetail, CreateBoardInput } from "@taskpulse/shared-types";
 
 import { http } from "@/services/http";
 
@@ -27,7 +27,7 @@ export async function createBoard(workspaceId: string, input: CreateBoardInput):
   return response.data.board;
 }
 
-export async function fetchBoard(boardId: string): Promise<Board> {
-  const response = await http<BoardResponse>(`/boards/${encodeURIComponent(boardId)}`);
+export async function fetchBoard(boardId: string): Promise<BoardDetail> {
+  const response = await http<{data: {board: BoardDetail}}>(`/boards/${encodeURIComponent(boardId)}`);
   return response.data.board;
 }

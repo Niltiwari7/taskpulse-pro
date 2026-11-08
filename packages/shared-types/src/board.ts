@@ -1,4 +1,6 @@
 import z from "zod";
+import type { Card } from "./card.js";
+import type { List } from "./list.js";
 
 export interface Board {
   id: string;
@@ -67,6 +69,9 @@ export const moveListSchema = z.object({
   message: 'beforeId and afterId must differ'
   });
 
+export interface BoardDetail extends Board {
+  lists: (List & {cards : Card[]})[];
+}
 
 export type CreateBoardInput = z.input<typeof createBoardSchema>;
 export type UpdateBoardInput = z.input<typeof updateBoardSchema>;
