@@ -5,6 +5,7 @@ import {Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle} fro
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCardQuery } from "@/composables/useCards";
 import { ApiError } from "@/services/http";
+import DescriptionEditor from "./DescriptionEditor.vue";
 
 const props = defineProps<
     {
@@ -33,9 +34,7 @@ async function close() {
           <DialogTitle class="break-words text-xl">{{ card.title }}</DialogTitle>
           <DialogDescription>Card details</DialogDescription>
         </DialogHeader>
-        <p class="whitespace-pre-wrap text-sm text-muted-foreground">
-          {{ card.description || "No description yet." }}
-        </p>
+        <DescriptionEditor :key="card.id" :board-id="boardId" :card="card" />
       </template>
 
       <template v-else-if="isPending">
