@@ -315,6 +315,55 @@ describe('permissions', () => {
     expect(patchRes.status).toBe(403);
   });
 
+  it('an OBSERVER cannot archive or delete a card (403) and nothing changes', async () => {
+    const { admin, workspace, board, list } = await setupList();
+    const card = await createCard(admin.agent, list.id);
+    const observer = await addObserver(admin.agent, workspace.id, board.id);
+
+    // Archived first, so a 403 on DELETE is about permission, not the 409 lifecycle rule.
+    const archivedByObserver = await observer.agent.post(`${cardsUrl}/${card.id}/archive`);
+    expect(archivedByObserver.status).toBe(403);
+
+    const archivedByAdmin = await admin.agent.post(`${cardsUrl}/${card.id}/archive`);
+    expect(archivedByAdmin.status).toBe(200);
+
+    const deletedByObserver = await observer.agent.delete(`${cardsUrl}/${card.id}`);
+    expect(deletedByObserver.status).toBe(403);
+
+    const stillThere = await admin.agent.get(`${cardsUrl}/${card.id}`);
+    expect(stillThere.status).toBe(200);
+  });
+
+  it('an outsider cannot archive a card (404)', async () => {
+    const { admin, list } = await setupList();
+    const card = await createCard(admin.agent, list.id);
+    const outsider = await loginAsNewUser();
+
+    const res = await outsider.agent.post(`${cardsUrl}/${card.id}/archive`);
+
+    expect(res.status).toBe(404);
+    const after = await admin.agent.get(`${cardsUrl}/${card.id}`);
+    expect(after.body.data.card.isArchived).toBe(false);
+  });
+
+  it('a GUEST on one board gets 404 on a card in another board', async () => {
+    const { admin, workspace, board } = await setupList();
+    const otherBoard = await createBoard(admin.agent, workspace.id);
+    const otherList = await createList(admin.agent, otherBoard.id);
+    const otherCard = await createCard(admin.agent, otherList.id);
+
+    const guest = await loginAsNewUser();
+    await addBoardMember(admin.agent, board.id, guest.email, 'GUEST');
+    const archived = await admin.agent.post(`${cardsUrl}/${otherCard.id}/archive`);
+    expect(archived.status).toBe(200);
+
+    const getRes = await guest.agent.get(`${cardsUrl}/${otherCard.id}`);
+    const deleteRes = await guest.agent.delete(`${cardsUrl}/${otherCard.id}`);
+
+    expect(getRes.status).toBe(404);
+    expect(deleteRes.status).toBe(404);
+  });
+
   it('returns 401 when logged out', async () => {
     const { admin, list } = await setupList();
     const card = await createCard(admin.agent, list.id);

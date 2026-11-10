@@ -52,4 +52,4 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter server db:test:migrate
-      - run: pnpm --filter server test
+      - run: pnpm test

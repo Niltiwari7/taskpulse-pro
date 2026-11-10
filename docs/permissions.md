@@ -183,6 +183,24 @@ Same actors as [§5](#5-board-routes-role--route-matrix). Expected status on a `
 
 Other visibilities follow the same rule as boards: on `PRIVATE`, a ws MEMBER who isn't on the board gets **404** on every list route. On `PUBLIC`, an outsider gets **200** on `GET` and **403** on the write routes.
 
+### Card routes
+
+Same actors as the list routes, on a `WORKSPACE`-visible board. Tests: `apps/server/tests/cards.test.ts`.
+
+| Route | Anon | Outsider | ws MEMBER | ws ADMIN | board ADMIN | board MEMBER | OBSERVER | GUEST |
+|---|---|---|---|---|---|---|---|---|
+| `POST /lists/:listId/cards` | 401 | 404 | 403 ¹ | 201 | 201 | 201 | 403 | 201 |
+| `GET /cards/:cardId` ² | 401 | 404 | 200 | 200 | 200 | 200 | 200 | 200 |
+| `PATCH /cards/:cardId` ² | 401 | 404 | 403 ¹ | 200 | 200 | 200 | 403 | 200 |
+| `POST /cards/:cardId/archive` ² | 401 | 404 | 403 ¹ | 200 | 200 | 200 | 403 | 200 |
+| `DELETE /cards/:cardId` ² ³ | 401 | 404 | 403 ¹ | 204 | 204 | 204 | 403 | 204 |
+
+¹ A ws MEMBER who isn't on the board can see it but not change it (see [Open decisions](#7-open-decisions), item 4).
+² Addressed by card id alone; the server finds the board through the card's list. A card that doesn't exist and a card on a board the user can't see both get `404 CARD_NOT_FOUND`. A GUEST of one board gets 404 on cards in any other board.
+³ Only an archived card can be deleted (lifecycle open → archived → deleted). An unarchived card returns `409 CARD_NOT_ARCHIVED`, but only after the permission check, so a user who may not delete gets 403/404 first.
+
+Cards have no owner: any user who can edit board content can edit, archive or delete any card on that board, including a GUEST. Per-card ownership is not implemented (see `DEBT.md`).
+
 ### Coming later
 
 These rules don't have routes yet. Each week that adds a feature fills in its rows and adds the matching tests.
