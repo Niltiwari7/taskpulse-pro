@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "../../middleware/requiredAuth";
-import { archiveCard, deleteCard, getCard, updateCard } from "./card.controller";
+import { archiveCard, deleteCard, getCard, moveCardHandler, updateCard } from "./card.controller";
 
 const cardRouter = Router();
 
@@ -11,5 +11,6 @@ cardRouter.get('/:cardId', getCard);
 cardRouter.patch('/:cardId', updateCard);
 cardRouter.post('/:cardId/archive', archiveCard);
 cardRouter.delete('/:cardId', deleteCard);
+cardRouter.patch('/:cardId/move', moveCardHandler)
 
 export default cardRouter;

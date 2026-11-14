@@ -3,11 +3,28 @@ import {db} from '../../prisma/db'
 import { findAccessibleBoard } from '../board/board.controller'
 import { canEditBoardContent } from '../board/board.access'
 import { toCardResponse } from './card.response'
-import { updateCardSchema } from '@taskpulse/shared-types'
+import { moveCardSchema, updateCardSchema } from '@taskpulse/shared-types'
 import { deleteCardContent } from './card.content'
+import { moveCard, MoveCardFailure } from './card.move'
 
 type CardParams = {
    cardId: string
+}
+
+const moveStatus : Record<MoveCardFailure, number> = {
+  INVALID_ANCHOR : 400,
+  LIST_NOT_FOUND: 404,
+  CARD_NOT_FOUND : 404,
+  LIST_ARCHIVED: 409,
+  STALE_ANCHOR : 409
+}
+
+const moveMessage: Record<MoveCardFailure, string> = {
+  INVALID_ANCHOR: 'A card cannot be its own anchor.',
+  LIST_NOT_FOUND: 'No such list.',
+  CARD_NOT_FOUND: 'No card found.',
+  LIST_ARCHIVED: 'List is archived.',
+  STALE_ANCHOR: 'The board has changed. Refresh and try again.',
 }
 
 function sendCardNotFound(res: Response) : void {
@@ -184,4 +201,53 @@ export async function deleteCard(
   } catch (error) {
     next(error)
   }
+}
+
+/**
+ * @route PATCH /cards/:cardId/move
+ * @description move the card in the list or across the list.
+ * @access canEditBoardContent
+ */
+
+export async function moveCardHandler(req: Request<CardParams>, res: Response, next: NextFunction) {
+  try {
+    const card = await loadCard(req, res, { edit: true });
+    if (!card) return;
+    // loadCard types list as nullable; every card has one, but the type needs proof.
+    if (!card.list) {
+      sendCardNotFound(res);
+      return;
+    }
+
+    if (card.isArchived) {
+      res.status(409).json({
+        error: {
+          code: 'CARD_ARCHIVED',
+          message: 'Archived cards cannot be moved.',
+        },
+      });
+      return;
+    }
+
+    const parsed = moveCardSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Invalid move data.',
+          details: parsed.error.flatten(),
+        },
+      });
+      return;
+    }
+
+    const result = await moveCard({ id: card.id, list: card.list }, parsed.data);
+    if (!result.ok) {
+      res.status(moveStatus[result.reason]).json({
+        error: { code: result.reason, message: moveMessage[result.reason] },
+      });
+      return;
+    }
+    res.status(200).json({ data: { card: toCardResponse(result.card) } });
+  } catch (error) { next(error); }
 }

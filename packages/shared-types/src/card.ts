@@ -34,5 +34,15 @@ export const updateCardSchema = z.object({
 }).strict()
   .refine((d)=>Object.keys(d).length>0, {message: 'At least one field must be provided'});
 
+export const moveCardSchema = z.object({
+  targetListId : z.string().min(1),
+  beforeId : z.string().min(1).nullable(),
+  afterId : z.string().min(1).nullable()
+}).strict()
+  .refine((d) => d.beforeId === null || d.beforeId !== d.afterId, {
+    message: 'beforeId and afterId must differ'
+  })
+
 export type CreateCardInput = z.infer<typeof createCardSchema>;
 export type UpdateCardInput = z.infer<typeof updateCardSchema>;
+export type MoveCardInput = z.infer<typeof moveCardSchema>;
