@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {nextTick, ref, useTemplateRef} from "vue";
+import {nextTick, ref, useTemplateRef, watch} from "vue";
 import {toast} from 'vue-sonner';
 import { GripVertical, MoreHorizontal, Trash2 } from "@lucide/vue";
 import {updateListSchema, type Card, type List} from "@taskpulse/shared-types";
@@ -17,12 +17,19 @@ import {Input} from "@/components/ui/input";
 import {useRenameList} from "@/composables/useLists";
 import AddCardComposer from "@/components/card/AddCardComposer.vue";
 import CardTile from "@/components/card/CardTile.vue";
+import { VueDraggable, type SortableEvent } from "vue-draggable-plus";
+import type { CardDrop } from "@/lib/reorder";
 
 const props = defineProps<{
   list: List;
   cards: Card[]
 }>();
 
+const emit = defineEmits<{ moveCard: [drop: CardDrop] }>();
+
+// The library changes this array; the query cache stays untouched until the server answers.
+const localCards = ref<Card[]>([])
+watch(()=>props.cards,(v)=>{localCards.value=[...v]},{immediate: true})
 const isEditing = ref(false);
 const draft = ref("");
 const deleteOpen = ref(false);
@@ -54,6 +61,14 @@ async function save() {
   } catch (error) {
     toast.error(error instanceof Error ? error.message : "Couldn't rename the list");
   }
+}
+
+function onCardDragEnd(e: SortableEvent) {
+  const cardId = e.item.dataset.cardId;
+  const toListId = e.to.dataset.listId;
+  if (!cardId || !toListId || e.newIndex == null) return;
+  if (e.from === e.to && e.oldIndex === e.newIndex) return; // dropped where it started
+  emit("moveCard", { cardId, toListId, newIndex: e.newIndex });
 }
 
 </script>
@@ -104,13 +119,33 @@ async function save() {
   </DropdownMenu>
   </header>
 
-  <ol class="mt-2 min-h-2 flex-1 space-y-2 overflow-y-auto px-0.5 py-0.5">
-    <li v-for="card in cards" :key="card.id">
-      <CardTile :card="card" :board-id="list.boardId"/>
+    <VueDraggable
+        v-model="localCards"
+        tag="ol"
+        group="cards"
+        :data-list-id="list.id"
+        :animation="150"
+        ghost-class="card-ghost"
+        class="mt-2 min-h-10 flex-1 space-y-2 overflow-y-auto px-0.5 py-0.5"
+        @end="onCardDragEnd"
+  >
+    <li v-for="card in localCards" :key="card.id" :data-card-id="card.id">
+      <CardTile :card="card" :board-id="list.boardId" />
     </li>
-  </ol>
+  </VueDraggable>
+
   <AddCardComposer :list-id="list.id" :board-id="list.boardId"/>
     <!-- Outside the DropdownMenu so closing the menu doesn't tear down the dialog -->
     <DeleteListDialog v-model:open="deleteOpen" :list="list" />
   </section>
 </template>
+
+<style scoped>
+/* Sortable adds this class to the element marking the drop slot. */
+:deep(.card-ghost) {
+  opacity: 0.5;
+  outline: 2px dashed var(--color-ring);
+  outline-offset: -2px;
+  border-radius: var(--radius-lg);
+}
+</style>

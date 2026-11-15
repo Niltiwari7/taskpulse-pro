@@ -1,4 +1,4 @@
-import type { Card, CreateCardInput, UpdateCardInput } from "@taskpulse/shared-types";
+import type { Card, CreateCardInput, MoveCardInput, UpdateCardInput } from "@taskpulse/shared-types";
 import {http} from '@/services/http'
 type CardResponse = {data: {card: Card}}
 
@@ -22,6 +22,15 @@ export async function updateCard(cardId : string, input : UpdateCardInput):Promi
   const res = await http<CardResponse>(cardPath(cardId), {
     method: 'PATCH',
     body:input
+  })
+
+  return res.data.card;
+}
+
+export async function moveCard(cardId : string, input: MoveCardInput) : Promise<Card> {
+  const res = await http<CardResponse>(`${cardPath(cardId)}/move` , {
+    method: 'PATCH',
+    body : input
   })
 
   return res.data.card;

@@ -8,10 +8,11 @@
 
 import {computed, toValue, type MaybeRefOrGetter} from "vue";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
-import type {Card, CreateCardInput, UpdateCardInput} from "@taskpulse/shared-types"
+import { toast } from "vue-sonner";
+import type {Card, CreateCardInput, MoveCardInput, UpdateCardInput} from "@taskpulse/shared-types"
 
 import { ApiError } from "@/services/http";
-import { createCard, fetchCard, updateCard } from "@/services/cards";
+import { createCard, fetchCard, updateCard, moveCard } from "@/services/cards";
 
 export const cardKeys = {
   all: ["cards"] as const,
@@ -56,6 +57,28 @@ export function useUpdateCard(boardId: MaybeRefOrGetter<string>) {
       queryClient.setQueryData(cardKeys.detail(updated.id), updated);
       queryClient.setQueryData<Card[]>(cardKeys.byBoard(toValue(boardId)), (old) =>
         old?.map((c) => (c.id === updated.id ? updated : c)),
+      );
+    },
+  });
+}
+
+
+export function useMoveCard(boardId: MaybeRefOrGetter<string>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { cardId: string; input: MoveCardInput }) => moveCard(v.cardId, v.input),
+    onSuccess: (moved) => {
+      // The server's card carries the new listId and rank; the next drag computes from it.
+      queryClient.setQueryData(cardKeys.detail(moved.id), moved);
+      queryClient.setQueryData<Card[]>(cardKeys.byBoard(toValue(boardId)), (old) =>
+        old?.map((c) => (c.id === moved.id ? moved : c)),
+      );
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof ApiError && error.status === 409
+          ? "The board changed while you were dragging. Showing the latest."
+          : "Couldn't move the card",
       );
     },
   });

@@ -21,8 +21,8 @@ import { AlertCircle, ArrowLeft } from "@lucide/vue";
 import { RouterLink } from "vue-router";
 import { VueDraggable } from "vue-draggable-plus";
 import type { Card, List } from "@taskpulse/shared-types";
-import { moveItem } from "@/lib/reorder";
-import { useBoardCards } from "@/composables/useCards";
+import { dropAnchors, moveItem, type CardDrop } from "@/lib/reorder";
+import { useBoardCards, useMoveCard } from "@/composables/useCards";
 
 const props = defineProps<{ boardId: string }>();
 
@@ -44,6 +44,22 @@ function onDragEnd(e: { oldIndex?: number; newIndex?: number }) {
   moveListMutation({ listId: items[e.newIndex].id, beforeId, afterId, optimistic: items });
 }
 
+const { mutate: moveCardMutation } = useMoveCard(() => props.boardId);
+
+function onMoveCard({ cardId, toListId, newIndex }: CardDrop) {
+  // Neighbours come from the cache (server data), not from what the library just moved.
+  const { beforeId, afterId } = dropAnchors(cardsByList.value.get(toListId) ?? [], cardId, newIndex);
+  // Not awaited: the card is already where the user dropped it.
+  moveCardMutation(
+    { cardId, input: { targetListId: toListId, beforeId, afterId } },
+    { onError: () => refetch() }, // the board query reloads the cards
+  );
+}
+
+
+// Same tie-break as the server's ORDER BY position, id.
+const byRank = (a: Card, b: Card) =>
+  a.position < b.position ? -1 : a.position > b.position ? 1 : a.id < b.id ? -1 : 1;
 
 const cardsByList = computed(() => {
   const map = new Map<string, Card[]>();
@@ -53,6 +69,8 @@ const cardsByList = computed(() => {
     if(bucket)bucket.push(card);
     else map.set(card.listId,[card]);
   }
+  // Plain < on purpose: fractional keys sort by code unit, and localeCompare would reorder them.
+  for (const bucket of map.values()) bucket.sort(byRank);
   return map;
 })
 // Opening a board from a link should also switch the header to its workspace
@@ -131,7 +149,7 @@ watch(lists, (v) => {localLists.value = v ? [...v]:[];},{immediate: true})
             ghost-class="opacity-40"
             @end="onDragEnd"
           >
-            <ListColumn v-for="list in localLists" :key="list.id" :list="list"  :cards = "cardsByList.get(list.id)??[]"/>
+            <ListColumn v-for="list in localLists" :key="list.id" :list="list"  :cards = "cardsByList.get(list.id)??[]" @move-card="onMoveCard"/>
           </VueDraggable>
           <RouterView/>
           <AddListComposer :board-id="boardId" />
