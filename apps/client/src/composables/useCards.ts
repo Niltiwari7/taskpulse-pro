@@ -13,6 +13,9 @@ import type {Card, CreateCardInput, MoveCardInput, UpdateCardInput} from "@taskp
 
 import { ApiError } from "@/services/http";
 import { createCard, fetchCard, updateCard, moveCard } from "@/services/cards";
+import { applyCardMove } from "@/lib/reorder";
+// useBoards imports cardKeys from here too; safe, because both are only read inside functions.
+import { boardKeys } from "./useBoards";
 
 export const cardKeys = {
   all: ["cards"] as const,
@@ -65,21 +68,47 @@ export function useUpdateCard(boardId: MaybeRefOrGetter<string>) {
 
 export function useMoveCard(boardId: MaybeRefOrGetter<string>) {
   const queryClient = useQueryClient();
+  const cardsKey = () => cardKeys.byBoard(toValue(boardId));
+  const boardKey = () => boardKeys.detail(toValue(boardId));
+
   return useMutation({
+    mutationKey:["moveCard"],
     mutationFn: (v: { cardId: string; input: MoveCardInput }) => moveCard(v.cardId, v.input),
-    onSuccess: (moved) => {
-      // The server's card carries the new listId and rank; the next drag computes from it.
-      queryClient.setQueryData(cardKeys.detail(moved.id), moved);
-      queryClient.setQueryData<Card[]>(cardKeys.byBoard(toValue(boardId)), (old) =>
-        old?.map((c) => (c.id === moved.id ? moved : c)),
-      );
+    onMutate: async({cardId, input})=> {
+      //1. A board refetch landing now would overwrite our guess
+      await queryClient.cancelQueries({queryKey:boardKey()});
+      // 2. snapshot
+       const previous = queryClient.getQueryData<Card[]>(cardsKey());
+      // 3. apply the guess
+      if(previous) {
+        try {
+          queryClient.setQueryData<Card[]>(cardsKey(),applyCardMove(previous,cardId, input));
+        }catch {
+          // Neighbors out of order: skip the guess and let the server decide
+        }
+      }
+      // 4. Becomes 'context' in onError
+      return {previous};
     },
-    onError: (error) => {
+    onError:(error, _v, context) => {
+      if (context?.previous) queryClient.setQueryData(cardsKey(), context.previous);
       toast.error(
-        error instanceof ApiError && error.status === 409
-          ? "The board changed while you were dragging. Showing the latest."
-          : "Couldn't move the card",
-      );
+        error instanceof ApiError && error.status === 409 ?
+        "The board changes while you were dragging. Showing the latest" :
+        "Could not move the card"
+      )
     },
+    onSuccess: (moved) => {
+      // Swap the guessed rank for the real one (keep the existing body).
+      queryClient.setQueryData(cardKeys.detail(moved.id), moved);
+      queryClient.setQueryData<Card[]>(cardsKey(), (old) => old?.map((c) => (c.id === moved.id ? moved : c)));
+    },
+    onSettled: ()=> {
+      // Only resync after the last move in a burst of drags, otherwise
+      // the refetch can briefly undo moves that are still in flight
+      if(queryClient.isMutating({mutationKey:["moveCard"]})===1) {
+        return queryClient.invalidateQueries({queryKey:boardKey()})
+      }
+    }
   });
 }

@@ -1,5 +1,5 @@
 import {describe , it, expect} from 'vitest';
-import {rankBetween} from '../src/shared/rank';
+import {rankBetween} from '@taskpulse/shared-types';
 
 describe("rankBetween", ()=> {
   it("generates 1,000 unique, correctly ordered ranks", ()=> {

@@ -1,6 +1,6 @@
 import argon2 from 'argon2';
 import { db } from '../prisma/db';
-import { rankBetween } from '../shared/rank';
+import { rankBetween } from "@taskpulse/shared-types";
 
 // Every seeded user can log in with this password (local dev only).
 const SEED_PASSWORD = 'password123';

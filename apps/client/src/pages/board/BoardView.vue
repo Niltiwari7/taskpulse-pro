@@ -49,12 +49,9 @@ const { mutate: moveCardMutation } = useMoveCard(() => props.boardId);
 function onMoveCard({ cardId, toListId, newIndex }: CardDrop) {
   // Neighbours come from the cache (server data), not from what the library just moved.
   const { beforeId, afterId } = dropAnchors(cardsByList.value.get(toListId) ?? [], cardId, newIndex);
-  // Not awaited: the card is already where the user dropped it.
-  moveCardMutation(
-    { cardId, input: { targetListId: toListId, beforeId, afterId } },
-    { onError: () => refetch() }, // the board query reloads the cards
-  );
+  moveCardMutation({ cardId, input: { targetListId: toListId, beforeId, afterId } });
 }
+
 
 
 // Same tie-break as the server's ORDER BY position, id.

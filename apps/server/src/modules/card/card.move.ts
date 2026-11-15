@@ -1,5 +1,5 @@
 import {db} from '../../prisma/db'
-import { rankBetween } from '../../shared/rank'
+import { rankBetween } from '@taskpulse/shared-types'
 import { retryOnUniqueViolation } from '../../utils/retryOnUniqueViolation'
 import type { MoveCardInput } from '@taskpulse/shared-types'
 import type { CardRow } from './card.response'

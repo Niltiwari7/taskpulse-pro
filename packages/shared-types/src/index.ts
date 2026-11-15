@@ -19,4 +19,4 @@ export * from "./activity"
 export * from "./activity"
 export * from './api'
 export * from './auth.schema'
-
+export * from './rank'

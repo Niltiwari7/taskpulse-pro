@@ -4,7 +4,7 @@ import {updateListSchema, moveListSchema, createCardSchema} from '@taskpulse/sha
 import {findAccessibleBoard, toListResponse} from '../board/board.controller';
 import {canEditBoardContent} from '../board/board.access';
 import { retryOnUniqueViolation } from '../../utils/retryOnUniqueViolation';
-import { rankBetween } from '../../shared/rank';
+import { rankBetween } from "@taskpulse/shared-types";
 import { toCardResponse } from '../card/card.response';
 
 

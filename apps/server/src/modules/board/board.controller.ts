@@ -12,7 +12,7 @@ import {
 } from '@taskpulse/shared-types';
 import { canAccessBoard, canEditBoardContent } from './board.access';
 import { isUniqueViolation } from '../../utils/isUniqueViolation';
-import { rankBetween } from '../../shared/rank';
+import { rankBetween } from "@taskpulse/shared-types";
 import { retryOnUniqueViolation } from '../../utils/retryOnUniqueViolation';
 
 type WorkspaceParams = { workspaceId: string };
