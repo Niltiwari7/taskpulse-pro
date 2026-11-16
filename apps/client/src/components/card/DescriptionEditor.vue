@@ -83,7 +83,7 @@ onBeforeUnmount(() => clearTimeout(savedTimer));
     <button v-else type="button" class="block w-full rounded-md p-2 text-left hover:bg-muted"
           @click="startEdit">
     <!-- eslint-disable-next-line vue/no-v-html -- sanitized by renderMarkdown -->
-    <div v-if="card.description" class="prose prose-sm max-w-none" v-html="html" />
+    <div v-if="card.description" class="prose prose-sm max-w-none [overflow-wrap:anywhere]" v-html="html" />
     <span v-else class="text-sm text-muted-foreground">Add a more detailed description…</span>
   </button>
   </section>

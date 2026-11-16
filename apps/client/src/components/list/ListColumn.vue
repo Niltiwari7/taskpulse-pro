@@ -79,7 +79,7 @@ function onCardDragEnd(e: SortableEvent) {
       :aria-label="list.name"
   >
   <header
-    class = "flex items-center gap-1"
+    class = "flex shrink-0 items-center gap-1"
   >
   <!-- Only this grip starts a drag, so clicking the title still renames -->
   <span data-drag-handle class="shrink-0 cursor-grab text-muted-foreground active:cursor-grabbing" aria-hidden="true">

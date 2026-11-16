@@ -28,13 +28,18 @@ async function close() {
 
 <template>
   <Dialog :open="true" @update:open="(v) => !v && close()">
-    <DialogContent class="sm:max-w-2xl">
+    <!-- One constant height whatever the content (smaller on short screens, since the
+         dialog is position: fixed and can't be scrolled to). The title stays put and
+         only the body scrolls. -->
+    <DialogContent class="flex h-[min(36rem,calc(100dvh-4rem))] flex-col sm:max-w-xl">
       <template v-if="card">
-        <DialogHeader>
-          <DialogTitle class="break-words text-xl">{{ card.title }}</DialogTitle>
+        <DialogHeader class="shrink-0 pr-6">
+          <DialogTitle class="line-clamp-2 break-words text-xl">{{ card.title }}</DialogTitle>
           <DialogDescription>Card details</DialogDescription>
         </DialogHeader>
-        <DescriptionEditor :key="card.id" :board-id="boardId" :card="card" />
+        <div class="-mx-2 min-h-0 flex-1 overflow-y-auto px-2">
+          <DescriptionEditor :key="card.id" :board-id="boardId" :card="card" />
+        </div>
       </template>
 
       <template v-else-if="isPending">

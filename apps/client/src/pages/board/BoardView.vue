@@ -84,7 +84,7 @@ watch(lists, (v) => {localLists.value = v ? [...v]:[];},{immediate: true})
 
 <template>
   <div class="flex h-full flex-col">
-    <header class="flex items-center gap-3 border-b px-6 py-4">
+    <header class="flex shrink-0 items-center gap-3 border-b px-6 py-4">
       <Button as-child variant="ghost" size="icon" aria-label="Back to dashboard">
         <RouterLink :to="{ name: 'dashboard' }"><ArrowLeft /></RouterLink>
       </Button>
@@ -122,7 +122,9 @@ watch(lists, (v) => {localLists.value = v ? [...v]:[];},{immediate: true})
     </div>
 
     <!-- Board canvas: only this area scrolls sideways, the header stays put -->
-    <template v-else>
+    <!-- Each link in the height chain must be definite, or a column's max-h-full is
+         ignored and it grows with its cards instead of scrolling them. -->
+    <div v-else class="min-h-0 flex-1 overflow-x-auto overflow-y-hidden">
       <div class="flex h-full w-max items-start gap-3 p-6">
         <template v-if="listsPending">
           <Skeleton v-for="n in 3" :key="n" class="h-32 w-72 shrink-0 rounded-xl" />
@@ -140,7 +142,7 @@ watch(lists, (v) => {localLists.value = v ? [...v]:[];},{immediate: true})
 
           <VueDraggable
             v-model="localLists"
-            class="flex items-start gap-3"
+            class="flex h-full items-start gap-3"
             :animation="150"
             handle="[data-drag-handle]"
             ghost-class="opacity-40"
@@ -152,6 +154,6 @@ watch(lists, (v) => {localLists.value = v ? [...v]:[];},{immediate: true})
           <AddListComposer :board-id="boardId" />
         </template>
       </div>
-    </template>
+    </div>
   </div>
 </template>
