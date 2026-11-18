@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'de639faf921b9159e7364ec1c2e70199e61c2021bd9726bd2894fe9fde40bd16'>;
+  StorageHashBase<'fa4475000be70e98aebb2f83c64637ec0ff33bd890f5c784e8a133723cb32f57'>;
 export type ExecutionHash =
   ExecutionHashBase<'d4ef3a3b187c83f27c1a35c56c0647529fbcdecbc84394b8dae05091890bac1a'>;
 export type ProfileHash =
@@ -357,7 +357,8 @@ export type FieldOutputTypes = {
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly boardId: CodecTypes['pg/text@1']['output'];
       readonly name: CodecTypes['pg/text@1']['output'] | null;
-      readonly color: CodecTypes['pg/text@1']['output'] | null;
+      readonly color: CodecTypes['pg/text@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
     readonly List: {
       readonly id: CodecTypes['pg/text@1']['output'];
@@ -508,7 +509,8 @@ export type FieldInputTypes = {
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly boardId: CodecTypes['pg/text@1']['input'];
       readonly name: CodecTypes['pg/text@1']['input'] | null;
-      readonly color: CodecTypes['pg/text@1']['input'] | null;
+      readonly color: CodecTypes['pg/text@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
     readonly List: {
       readonly id: CodecTypes['pg/text@1']['input'];
@@ -657,7 +659,8 @@ export type StorageColumnTypes = {
     };
     readonly Label: {
       readonly boardId: CodecTypes['pg/text@1']['output'];
-      readonly color: CodecTypes['pg/text@1']['output'] | null;
+      readonly color: CodecTypes['pg/text@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly name: CodecTypes['pg/text@1']['output'] | null;
     };
@@ -808,7 +811,8 @@ export type StorageColumnInputTypes = {
     };
     readonly Label: {
       readonly boardId: CodecTypes['pg/text@1']['input'];
-      readonly color: CodecTypes['pg/text@1']['input'] | null;
+      readonly color: CodecTypes['pg/text@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly name: CodecTypes['pg/text@1']['input'] | null;
     };
@@ -987,7 +991,8 @@ export namespace Models {
     id: CodecTypes['pg/text@1']['output'];
     boardId: CodecTypes['pg/text@1']['output'];
     name: CodecTypes['pg/text@1']['output'] | null;
-    color: CodecTypes['pg/text@1']['output'] | null;
+    color: CodecTypes['pg/text@1']['output'];
+    createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
     board: public_Board;
     cards: public_CardLabel[];
     readonly [RelationKeys]?: 'board' | 'cards';
@@ -2137,7 +2142,13 @@ type ContractBase = Omit<
                 readonly color: {
                   readonly nativeType: 'text';
                   readonly codecId: 'pg/text@1';
-                  readonly nullable: true;
+                  readonly nullable: false;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
                 };
               };
               primaryKey: { readonly columns: readonly ['id'] };
@@ -3539,8 +3550,15 @@ type ContractBase = Omit<
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
               readonly color: {
-                readonly nullable: true;
+                readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
               };
             };
             readonly relations: {
@@ -3576,6 +3594,7 @@ type ContractBase = Omit<
                 readonly boardId: { readonly column: 'boardId' };
                 readonly name: { readonly column: 'name' };
                 readonly color: { readonly column: 'color' };
+                readonly createdAt: { readonly column: 'createdAt' };
               };
             };
           };

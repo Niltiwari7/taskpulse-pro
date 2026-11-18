@@ -134,6 +134,7 @@ afterEach(async () => {
       if (boardIds.length > 0) {
         await db.transaction((tx) => deleteBoardContent(tx, boardIds));
         await db.orm.public.BoardMember.where((m) => m.boardId.in(boardIds)).deleteAll();
+        await db.orm.public.Label.where((l) => l.boardId.in(boardIds)).deleteAll();
         await db.orm.public.Board.where((b) => b.id.in(boardIds)).deleteAll();
       }
       await db.orm.public.WorkspaceMember

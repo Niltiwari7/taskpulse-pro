@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
 
+import { LABEL_COLORS } from '@taskpulse/shared-types';
+
 import app from '../src/app';
 import { db } from '../src/prisma/db';
 
@@ -105,6 +107,7 @@ afterEach(async () => {
       // Foreign keys point child -> parent, so delete board rows before workspace rows.
       if (boardIds.length > 0) {
         await db.orm.public.BoardMember.where((m) => m.boardId.in(boardIds)).deleteAll();
+        await db.orm.public.Label.where((l) => l.boardId.in(boardIds)).deleteAll();
         await db.orm.public.Board.where((b) => b.id.in(boardIds)).deleteAll();
       }
       await db.orm.public.WorkspaceMember
@@ -139,6 +142,30 @@ describe('POST /workspaces/:workspaceId/boards', () => {
       .where({ boardId: board.id, userId })
       .first();
     expect(membership?.role).toBe('ADMIN');
+  });
+
+  it('creates the default label set with the board', async () => {
+    const { agent } = await loginAsNewUser();
+    const workspace = await createWorkspace(agent);
+    const board = await createBoard(agent, workspace.id);
+
+    const labels = await db.orm.public.Label.where({ boardId: board.id }).all();
+
+    expect(labels.map((l) => l.color).sort()).toEqual([...LABEL_COLORS].sort());
+    expect(labels.every((l) => l.name === null)).toBe(true);
+  });
+
+  it('gives each board its own labels', async () => {
+    const { agent } = await loginAsNewUser();
+    const workspace = await createWorkspace(agent);
+    const a = await createBoard(agent, workspace.id);
+    const b = await createBoard(agent, workspace.id);
+
+    const labelsA = await db.orm.public.Label.where({ boardId: a.id }).select('id').all();
+    const labelsB = await db.orm.public.Label.where({ boardId: b.id }).select('id').all();
+    const idsA = new Set(labelsA.map((l) => l.id));
+
+    expect(labelsB.some((l) => idsA.has(l.id))).toBe(false);
   });
 
   it('rejects an empty name with 400', async () => {

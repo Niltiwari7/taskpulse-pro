@@ -14,6 +14,7 @@ import { canAccessBoard, canEditBoardContent } from './board.access';
 import { isUniqueViolation } from '../../utils/isUniqueViolation';
 import { rankBetween } from "@taskpulse/shared-types";
 import { retryOnUniqueViolation } from '../../utils/retryOnUniqueViolation';
+import { createDefaultLabels } from '../label/label.defaults';
 
 type WorkspaceParams = { workspaceId: string };
 type BoardParams = { boardId: string };
@@ -164,7 +165,7 @@ export async function loadAccessibleBoard(
   return ctx;
 }
 
-// Deletes the lists and cards of these boards, children first. Call inside the
+// Deletes the lists, cards and labels of these boards, children first. Call inside the
 // transaction that deletes the boards.
 export async function deleteBoardContent(tx: Tx, boardIds: string[]): Promise<void> {
   const lists = await tx.orm.public.List.where((l) => l.boardId.in(boardIds)).select('id').all();
@@ -175,6 +176,8 @@ export async function deleteBoardContent(tx: Tx, boardIds: string[]): Promise<vo
     await deleteCardContent(tx, cards.map((c) => c.id));
     await tx.orm.public.List.where((l) => l.id.in(listIds)).deleteAll();
   }
+
+  await tx.orm.public.Label.where((l) => l.boardId.in(boardIds)).deleteAll();
 }
 
 // Board admins manage their board; workspace admins can manage every board in the workspace.
@@ -224,6 +227,8 @@ export async function createBoard(
         userId,
         role: 'ADMIN',
       });
+
+      await createDefaultLabels(tx, newBoard.id);
 
       return newBoard;
     });

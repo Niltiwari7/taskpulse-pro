@@ -178,7 +178,8 @@ model Label {
   id     String @id @default(nanoid())
   boardId String
   name   String?
-  color  String?
+  color  String
+  createdAt TimestamptzString @default(now())
 
   board Board       @relation(fields: [boardId], references: [id])
   cards CardLabel[]

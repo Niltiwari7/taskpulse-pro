@@ -8,4 +8,6 @@ import type { Tx } from '../../prisma/db';
 export async function deleteCardContent(tx: Tx, cardIds: string[]): Promise<void> {
   if (cardIds.length === 0) return;
   await tx.orm.public.Card.where((c) => c.id.in(cardIds)).deleteAll();
+  await tx.orm.public.CardLabel.where((cl)=>cl.cardId.in(cardIds)).deleteAll();
+  await tx.orm.public.Card.where((c) => c.id.in(cardIds)).deleteAll();
 }

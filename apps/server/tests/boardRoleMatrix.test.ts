@@ -237,6 +237,7 @@ afterAll(async () => {
       // Foreign keys point child -> parent, so delete board rows before workspace rows.
       if (boardIds.length > 0) {
         await db.orm.public.BoardMember.where((m) => m.boardId.in(boardIds)).deleteAll();
+        await db.orm.public.Label.where((l) => l.boardId.in(boardIds)).deleteAll();
         await db.orm.public.Board.where((b) => b.id.in(boardIds)).deleteAll();
       }
       await db.orm.public.WorkspaceMember
