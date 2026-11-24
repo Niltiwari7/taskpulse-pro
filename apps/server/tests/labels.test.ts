@@ -69,13 +69,6 @@ async function addWorkspaceMember(admin: Agent, workspaceId: string, email: stri
   expect(res.status).toBe(201);
 }
 
-async function addBoardMember(admin: Agent, boardId: string, email: string, role: 'ADMIN' | 'MEMBER' | 'OBSERVER' | 'GUEST') {
-  const res = await admin
-    .post(`${boardsUrl}/${boardId}/members`)
-    .send({ email, role });
-  expect(res.status).toBe(201);
-}
-
 async function createBoard(
   agent: Agent,
   workspaceId: string,
