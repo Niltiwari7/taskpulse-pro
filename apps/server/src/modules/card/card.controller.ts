@@ -6,6 +6,7 @@ import { toCardResponse } from './card.response'
 import { moveCardSchema, updateCardSchema } from '@taskpulse/shared-types'
 import { deleteCardContent } from './card.content'
 import { moveCard, MoveCardFailure } from './card.move'
+import { isUniqueViolation } from '../../utils/isUniqueViolation'
 
 type CardParams = {
    cardId: string
@@ -26,6 +27,8 @@ const moveMessage: Record<MoveCardFailure, string> = {
   LIST_ARCHIVED: 'List is archived.',
   STALE_ANCHOR: 'The board has changed. Refresh and try again.',
 }
+
+type cardLabelParams = {cardId:string, labelId:string}
 
 function sendCardNotFound(res: Response) : void {
   res.status(404).json({
@@ -250,4 +253,93 @@ export async function moveCardHandler(req: Request<CardParams>, res: Response, n
     }
     res.status(200).json({ data: { card: toCardResponse(result.card) } });
   } catch (error) { next(error); }
+}
+
+/**
+ * @route POST /cards/:cardId/labels/:labelId
+ * @description attach a label to a card (idempotent)
+ * @access canEditBoardContent
+ */
+export async function createCardLabel(
+  req: Request<cardLabelParams>,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const card = await loadCard(req, res, { edit: true });
+    if (!card) return;
+
+    if (card.isArchived) {
+      res.status(409).json({
+        error: {
+          code: 'CARD_ARCHIVED',
+          message: 'Cannot change labels on an archived card.',
+        },
+      });
+      return;
+    }
+
+    const { labelId } = req.params;
+    const label = await db.orm.public.Label.where({ id: labelId }).first();
+    if (!label) {
+      res.status(404).json({
+        error: { code: 'LABEL_NOT_FOUND', message: 'No such label.' },
+      });
+      return;
+    }
+
+    // A card may only carry its own board's labels.
+    if (label.boardId !== card.list?.boardId) {
+      res.status(400).json({
+        error: {
+          code: 'LABEL_BOARD_MISMATCH',
+          message: 'That label belongs to a different board.',
+        },
+      });
+      return;
+    }
+
+    const existing = await db.orm.public.CardLabel
+      .where({ cardId: card.id, labelId })
+      .first();
+
+    if (!existing) {
+      try {
+        await db.orm.public.CardLabel.create({ cardId: card.id, labelId });
+      } catch (error) {
+        // A concurrent attach won the race; the unique (cardId, labelId)
+        // constraint rejected ours. The label is attached either way.
+        if (!isUniqueViolation(error)) throw error;
+      }
+    }
+
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * @route DELETE /cards/:cardId/labels/:labelId
+ * @description detach a label from a card (idempotent)
+ * @access canEditBoardContent
+ */
+export async function deleteCardLabel(
+  req: Request<cardLabelParams>,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const card = await loadCard(req, res, { edit: true });
+    if (!card) return;
+
+    // No row to remove is fine: the label is not attached either way.
+    await db.orm.public.CardLabel
+      .where({ cardId: card.id, labelId: req.params.labelId })
+      .deleteAll();
+
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
 }
