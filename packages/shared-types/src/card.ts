@@ -11,7 +11,8 @@ export interface Card {
   dueDateReminder: string | null,
   isDueComplete: boolean,
   isArchived: boolean,
-  createdAt: string
+  createdAt: string,
+  labelIds: string[]
 }
 
 const cardTitle = z.string({error: 'Title is required'})

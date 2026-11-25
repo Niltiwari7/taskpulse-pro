@@ -2,7 +2,7 @@ import type {Request, Response, NextFunction} from 'express'
 import {db} from '../../prisma/db'
 import { findAccessibleBoard } from '../board/board.controller'
 import { canEditBoardContent } from '../board/board.access'
-import { toCardResponse } from './card.response'
+import { labelIdsOf, toCardResponse } from './card.response'
 import { moveCardSchema, updateCardSchema } from '@taskpulse/shared-types'
 import { deleteCardContent } from './card.content'
 import { moveCard, MoveCardFailure } from './card.move'
@@ -55,6 +55,7 @@ async function loadCard(req:Request<CardParams>, res:Response, {edit}: {edit:boo
   const card = await db.orm.public.Card
     .where({id: req.params.cardId})
     .include('list', (l)=> l.select('id','boardId','isArchived'))
+    .include('labels', (l)=> l.select('labelId'))
     .first()
   
   const ctx = card?.list && await findAccessibleBoard(card.list.boardId, req.user!.id)
@@ -86,7 +87,7 @@ export async function getCard(
     if (!card) return;
 
     res.status(200).json({
-      data: { card: toCardResponse(card) }
+      data: { card: toCardResponse(card, labelIdsOf(card)) }
     });
   } catch (error) {
     next(error);
@@ -128,7 +129,7 @@ export async function updateCard(
       return;
     }
 
-    res.status(200).json({ data: { card: toCardResponse(updated) } });
+    res.status(200).json({ data: { card: toCardResponse(updated, labelIdsOf(card)) } });
 
   } catch (error) {
     next(error);
@@ -151,7 +152,7 @@ export async function archiveCard(
 
     // Already archived: nothing to write (idempotent).
     if (card.isArchived) {
-      res.status(200).json({ data: { card: toCardResponse(card) } });
+      res.status(200).json({ data: { card: toCardResponse(card, labelIdsOf(card)) } });
       return;
     }
 
@@ -165,7 +166,7 @@ export async function archiveCard(
       return;
     }
 
-    res.status(200).json({ data: { card: toCardResponse(archived) } });
+    res.status(200).json({ data: { card: toCardResponse(archived, labelIdsOf(card)) } });
   } catch (error) {
     next(error);
   }
@@ -251,7 +252,7 @@ export async function moveCardHandler(req: Request<CardParams>, res: Response, n
       });
       return;
     }
-    res.status(200).json({ data: { card: toCardResponse(result.card) } });
+    res.status(200).json({ data: { card: toCardResponse(result.card, labelIdsOf(card)) } });
   } catch (error) { next(error); }
 }
 

@@ -13,7 +13,7 @@ export type CardRow = {
   createdAt: string;
 };
 
-export function toCardResponse(card: CardRow) {
+export function toCardResponse(card: CardRow, labelIds: string[]) {
   return {
     id: card.id,
     listId: card.listId,
@@ -27,5 +27,10 @@ export function toCardResponse(card: CardRow) {
     isDueComplete: card.isDueComplete,
     isArchived: card.isArchived,
     createdAt: card.createdAt,
+    labelIds,
   };
 }
+
+// Rows loaded with .include('labels', (l) => l.select('labelId')).
+export const labelIdsOf = (card: { labels: { labelId: string }[] }) =>
+  card.labels.map((l) => l.labelId);

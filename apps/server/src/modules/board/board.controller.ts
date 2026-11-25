@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { db, type Tx } from '../../prisma/db';
 import { deleteCardContent } from '../card/card.content';
-import { toCardResponse } from '../card/card.response';
+import { labelIdsOf, toCardResponse } from '../card/card.response';
 import {
   addBoardMemberSchema,
   createBoardSchema,
@@ -311,7 +311,8 @@ export async function getBoard(
         .orderBy([(l) => l.position.asc(), (l) => l.id.asc()])
         .include('cards', (cards) => cards
           .where({ isArchived: false })
-          .orderBy([(c) => c.position.asc(), (c) => c.id.asc()])))
+          .orderBy([(c) => c.position.asc(), (c) => c.id.asc()])
+          .include('labels', (l) => l.select('labelId'))))
       .first();
 
     // Deleted between the access check and this read.
@@ -326,7 +327,7 @@ export async function getBoard(
           ...toBoardResponse(tree),
           lists: tree.lists.map((list) => ({
             ...toListResponse(list),
-            cards: list.cards.map(toCardResponse),
+            cards: list.cards.map((c) => toCardResponse(c, labelIdsOf(c))),
           })),
         },
       },

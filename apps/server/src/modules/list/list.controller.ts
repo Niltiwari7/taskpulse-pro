@@ -298,7 +298,7 @@ export async function createCard(
     // (listId, position) constraint rejects one, which retries.
     const card = await retryOnUniqueViolation(appendCard);
 
-    res.status(201).json({ data: { card: toCardResponse(card) } });
+    res.status(201).json({ data: { card: toCardResponse(card, []) } });
   } catch (error) {
     next(error);
   }
